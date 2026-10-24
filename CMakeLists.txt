@@ -9,34 +9,42 @@ set(MAIN_PATH
     "${CMAKE_CURRENT_SOURCE_DIR}")
 set(INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/models"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scene"
     "${CMAKE_CURRENT_SOURCE_DIR}/window"
+    "${CMAKE_CURRENT_SOURCE_DIR}/window/cuda"
+    "${CMAKE_CURRENT_SOURCE_DIR}/window/openGL"
     "${CMAKE_CURRENT_SOURCE_DIR}/render")
 set(SOURCE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/models"
+    "${CMAKE_CURRENT_SOURCE_DIR}/scene"
     "${CMAKE_CURRENT_SOURCE_DIR}/window"
+    "${CMAKE_CURRENT_SOURCE_DIR}/window/cuda"
+    "${CMAKE_CURRENT_SOURCE_DIR}/window/openGL"
     "${CMAKE_CURRENT_SOURCE_DIR}/render")
 
-# Fetch File in Defined Build Directories
-set(HEADER_PATTERNS)
-foreach(include_dir IN LISTS INCLUDE_DIRS)
-    list(APPEND HEADER_PATTERNS 
-        "${include_dir}/*.hpp" 
-        "${include_dir}/*.h" 
-        "${include_dir}/*.cuh")
+# Collect All Header Files Recursively
+set(ALL_INCLUDE)
+foreach(dir IN LISTS INCLUDE_DIRS)
+    file(GLOB_RECURSE files CONFIGURE_DEPENDS
+        "${dir}/*.h" 
+        "${dir}/*.hpp" 
+        "${dir}/*.cuh")
+    list(APPEND ALL_INCLUDE ${files})
 endforeach()
-set(SOURCE_PATTERNS)
-foreach(source_dir IN LISTS SOURCE_DIRS)
-    list(APPEND SOURCE_PATTERNS 
-        "${source_dir}/*.cpp" 
-        "${source_dir}/*.cc"  
-        "${source_dir}/*.cu")
+list(REMOVE_DUPLICATES INCLUDE_DIRS)
+
+# Collect Source Files Recursively
+set(ALL_SOURCES)
+foreach(dir IN LISTS SOURCE_DIRS)
+    file(GLOB_RECURSE files CONFIGURE_DEPENDS
+        "${dir}/*.cpp" 
+        "${dir}/*.cc" 
+        "${dir}/*.cu")
+    list(APPEND ALL_SOURCES ${files})
 endforeach()
 
-# Add Internal Files into Build
+# Add Source and Header Files into Build
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-file(GLOB_RECURSE ALL_INCLUDE CONFIGURE_DEPENDS ${HEADER_PATTERNS})
-file(GLOB_RECURSE ALL_SOURCES CONFIGURE_DEPENDS ${SOURCE_PATTERNS})
-
 add_library(SceneRayTracer OBJECT main.cpp 
     ${ALL_INCLUDE} 
     ${ALL_SOURCES})

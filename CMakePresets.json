@@ -41,7 +41,7 @@
       "generator": "Visual Studio 17 2022",
       "binaryDir": "${sourceDir}/build/vs2022",
       "architecture": "x64",
-      "toolset": "cuda=$penv{CUDA_PATH}",
+      "toolset": "cuda=13.0",
       "cacheVariables": {
         "CUDAToolkit_ROOT": "$penv{CUDA_PATH}",
         "CMAKE_CUDA_ARCHITECTURES": "native"
