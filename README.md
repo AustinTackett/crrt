@@ -8,12 +8,12 @@ call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDe
 
 // Build Debug
 cmake --preset ninja-debug -DFETCHCONTENT_QUIET=OFF
-cmake --build --preset ninja-debug --target CliPreview
+cmake --build --preset ninja-debug --target SceneRayTracer
 
 cmake --preset vs2022 -DFETCHCONTENT_QUIET=OFF
-cmake --build --preset vs-debug --target CliPreview
+cmake --build --preset vs-debug --target SceneRayTracer
 
 // Notes on coding style, been writing more c99 and loving that method
 // Lets you write cuda kernels and render it to the screen 
 
-```
+// This is where I will show my test scenes

@@ -7,7 +7,6 @@ const vec2 positions[3] = vec2[](
     vec2(-1.0,  3.0)
 );
 
-
 void main()
 {
     vec2 position = positions[gl_VertexID];

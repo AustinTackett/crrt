@@ -3,14 +3,15 @@
 
 #include <string>
 #include <fstream>
-#include <stdexcept>
+#include <cstdio>
+#include "GlError.hpp"
 #include <unordered_map>
 #include <vector>
 
 #include <GL/glew.h>
 #include <glm/glm.hpp>
 
-namespace GL {
+namespace CRRT { namespace GL {
 
 /*
     OpenGL Shader Data Containers
@@ -31,7 +32,7 @@ struct GlShader
 };
 
 /*
-    Utility to Convert Text Files into Strings
+    Utility to Convert GLSL Text Files into Strings
 */
 
 static bool ParseFile(std::string filePath, std::string& outString)
@@ -47,14 +48,14 @@ static bool ParseFile(std::string filePath, std::string& outString)
         outString += tempStringLine;
         outString += '\n';
     }
-    return true;
+    return !file.bad();
 }
 
 /*
     Binding Texture as OpenGL Active Shader Program
 */
 
-static void BindShader(const GlShader& glShader)
+void BindShader(const GlShader& glShader)
 {
     if (!glShader.shader) {
         glUseProgram(0);
@@ -73,30 +74,33 @@ static void BindShader(const GlShader& glShader)
     Loading and Releasing Shaders to Device
 */
 
-static GlShader LoadShader(GlShaderConfig glConfig)
+// Requires an empty output and a current GL context. ReleaseShader handles
+// any program stored in shader, including a program that failed to link.
+[[nodiscard]] GlError LoadShader(GlShader& shader, const GlShaderConfig& glConfig)
 {
-    GlShader shader;
+    if (shader.shader) return GlError::shaderAlreadyCreated;
 
     std::string vertexShaderString;
     bool vShaderFileErr = ParseFile(glConfig.vertexShaderPath, vertexShaderString);
-    if (!vShaderFileErr)
-    {
-        throw std::runtime_error("Could not load vertex shader at path " + glConfig.vertexShaderPath + "\n");
-    }
+    if (!vShaderFileErr) { return GlError::shaderVertexFileReadFailed; }
 
     std::string fragmentShaderString;
     bool fShaderFileErr = ParseFile(glConfig.fragmentShaderPath, fragmentShaderString);
-    if (!fShaderFileErr)
-    {
-        throw std::runtime_error("Could not load fragment shader at path " + glConfig.fragmentShaderPath + "\n");
-    }
+    if (!fShaderFileErr) { return GlError::shaderFragmentFileReadFailed; }
 
-    GLuint newVertexShader = glCreateShader(GL_VERTEX_SHADER);
+    GLuint newVertexShader   = glCreateShader(GL_VERTEX_SHADER);
     GLuint newFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
+
+    bool shaderCreationSuccess = newVertexShader && newFragmentShader;
+    if (shaderCreationSuccess) {
+        if (newVertexShader)   glDeleteShader(newVertexShader);
+        if (newFragmentShader) glDeleteShader(newFragmentShader);
+        return GlError::shaderCreationFailed;
+    }
 
     const GLchar* vshaderCharArray = vertexShaderString.c_str();
     const GLchar* fshaderCharArray = fragmentShaderString.c_str();
-    glShaderSource(newVertexShader, 1, &vshaderCharArray, NULL);
+    glShaderSource(newVertexShader,   1, &vshaderCharArray, NULL);
     glShaderSource(newFragmentShader, 1, &fshaderCharArray, NULL);
 
     GLint vshaderCompileErr;
@@ -109,7 +113,7 @@ static GlShader LoadShader(GlShaderConfig glConfig)
         glGetShaderInfoLog(newVertexShader, vInfoLogLength, NULL, &vShaderInfolog[0]);
         glDeleteShader(newVertexShader);
         glDeleteShader(newFragmentShader);
-        throw std::runtime_error("Could not compile vertex shaders:\n" + std::string(vShaderInfolog) + "\n");
+        return GlError::shaderVertexCompilationFailed;
     }
 
     GLint fshaderCompileErr;
@@ -122,16 +126,17 @@ static GlShader LoadShader(GlShaderConfig glConfig)
         glGetShaderInfoLog(newFragmentShader, fInfoLogLength, NULL, &fShaderInfolog[0]);
         glDeleteShader(newFragmentShader);
         glDeleteShader(newVertexShader);
-        throw std::runtime_error("Could not compile fragment shaders:\n" + std::string(fShaderInfolog) + "\n");
+        return GlError::shaderFragmentCompilationFailed;
     }
 
     GLint linkProgramErr;
     GLuint newShaderProgram = glCreateProgram();
+    shader.shader = newShaderProgram;
     if (!newShaderProgram)
     {
         glDeleteShader(newVertexShader);
         glDeleteShader(newFragmentShader);
-        throw std::runtime_error("Could not create OpenGL program");
+        return GlError::shaderProgramCreationFailed;
     }
 
     const unsigned int programInfoLogLength = 1024;
@@ -145,8 +150,7 @@ static GlShader LoadShader(GlShaderConfig glConfig)
         glGetProgramInfoLog(newShaderProgram, programInfoLogLength, NULL, &programInfolog[0]);
         glDeleteShader(newVertexShader);
         glDeleteShader(newFragmentShader);
-        glDeleteProgram(newShaderProgram);
-        throw std::runtime_error("Could not link opengl program\n" + std::string(programInfolog) + "\n");
+        return GlError::shaderProgramLinkFailed;
     }
 
     glDetachShader(newShaderProgram, newVertexShader);
@@ -154,11 +158,11 @@ static GlShader LoadShader(GlShaderConfig glConfig)
     glDeleteShader(newVertexShader);
     glDeleteShader(newFragmentShader);
 
-    shader.shader = newShaderProgram;
-    return shader;
+    shader.uniformNameToLocation.clear();
+    return GlError::glSuccess;
 }
 
-static void ReleaseShader(GlShader& glShader)
+void ReleaseShader(GlShader& glShader)
 {
     if (!glShader.shader) return;
 
@@ -172,7 +176,7 @@ static void ReleaseShader(GlShader& glShader)
     Setting Shader Uniforms
 */
 
-static void SetUniformMat4f(GlShader& glShader, std::string name, glm::mat4 data)
+void SetUniformMat4f(GlShader& glShader, std::string name, glm::mat4 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -183,7 +187,7 @@ static void SetUniformMat4f(GlShader& glShader, std::string name, glm::mat4 data
     glUniformMatrix4fv(glShader.uniformNameToLocation.at(name), 1, GL_FALSE, &data[0][0]);
 }
 
-static void SetUniformMat4x3f(GlShader& glShader, std::string name, glm::mat4x3 data)
+void SetUniformMat4x3f(GlShader& glShader, std::string name, glm::mat4x3 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -194,7 +198,7 @@ static void SetUniformMat4x3f(GlShader& glShader, std::string name, glm::mat4x3 
     glUniformMatrix4x3fv(glShader.uniformNameToLocation.at(name), 1, GL_FALSE, &data[0][0]);
 }
 
-static void SetUniformMat4x2f(GlShader& glShader, std::string name, glm::mat4x2 data)
+void SetUniformMat4x2f(GlShader& glShader, std::string name, glm::mat4x2 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -205,7 +209,7 @@ static void SetUniformMat4x2f(GlShader& glShader, std::string name, glm::mat4x2 
     glUniformMatrix4x2fv(glShader.uniformNameToLocation.at(name), 1, GL_FALSE, &data[0][0]);
 }
 
-static void SetUniformMat3x4f(GlShader& glShader, std::string name, glm::mat3x4 data)
+void SetUniformMat3x4f(GlShader& glShader, std::string name, glm::mat3x4 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -216,7 +220,7 @@ static void SetUniformMat3x4f(GlShader& glShader, std::string name, glm::mat3x4 
     glUniformMatrix3x4fv(glShader.uniformNameToLocation.at(name), 1, GL_FALSE, &data[0][0]);
 }
 
-static void SetUniformMat3f(GlShader& glShader, std::string name, glm::mat3 data)
+void SetUniformMat3f(GlShader& glShader, std::string name, glm::mat3 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -227,7 +231,7 @@ static void SetUniformMat3f(GlShader& glShader, std::string name, glm::mat3 data
     glUniformMatrix3fv(glShader.uniformNameToLocation.at(name), 1, GL_FALSE, &data[0][0]);
 }
 
-static void SetUniformMat3x2f(GlShader& glShader, std::string name, glm::mat3x2 data)
+void SetUniformMat3x2f(GlShader& glShader, std::string name, glm::mat3x2 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -238,7 +242,7 @@ static void SetUniformMat3x2f(GlShader& glShader, std::string name, glm::mat3x2 
     glUniformMatrix3x2fv(glShader.uniformNameToLocation.at(name), 1, GL_FALSE, &data[0][0]);
 }
 
-static void SetUniformMat2x4f(GlShader& glShader, std::string name, glm::mat2x4 data)
+void SetUniformMat2x4f(GlShader& glShader, std::string name, glm::mat2x4 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -249,7 +253,7 @@ static void SetUniformMat2x4f(GlShader& glShader, std::string name, glm::mat2x4 
     glUniformMatrix2x4fv(glShader.uniformNameToLocation.at(name), 1, GL_FALSE, &data[0][0]);
 }
 
-static void SetUniformMat2x3f(GlShader& glShader, std::string name, glm::mat2x3 data)
+void SetUniformMat2x3f(GlShader& glShader, std::string name, glm::mat2x3 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -260,7 +264,7 @@ static void SetUniformMat2x3f(GlShader& glShader, std::string name, glm::mat2x3 
     glUniformMatrix2x3fv(glShader.uniformNameToLocation.at(name), 1, GL_FALSE, &data[0][0]);
 }
 
-static void SetUniformMat2x2f(GlShader& glShader, std::string name, glm::mat2 data)
+void SetUniformMat2x2f(GlShader& glShader, std::string name, glm::mat2 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -271,7 +275,7 @@ static void SetUniformMat2x2f(GlShader& glShader, std::string name, glm::mat2 da
     glUniformMatrix2fv(glShader.uniformNameToLocation.at(name), 1, GL_FALSE, &data[0][0]);
 }
 
-static void SetUniformVec4f(GlShader& glShader, std::string name, glm::vec4 data)
+void SetUniformVec4f(GlShader& glShader, std::string name, glm::vec4 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -282,7 +286,7 @@ static void SetUniformVec4f(GlShader& glShader, std::string name, glm::vec4 data
     glUniform4f(glShader.uniformNameToLocation.at(name), data[0], data[1], data[2], data[3]);
 }
 
-static void SetUniformVec4fv(GlShader& glShader, std::string name, std::vector<glm::vec4> data, GLsizei size)
+void SetUniformVec4fv(GlShader& glShader, std::string name, std::vector<glm::vec4> data, GLsizei size)
 {
     if (!glShader.shader) { return; }
     if (data.empty()) { return; }
@@ -294,7 +298,7 @@ static void SetUniformVec4fv(GlShader& glShader, std::string name, std::vector<g
     glUniform4fv(glShader.uniformNameToLocation.at(name), size, &data[0].x);
 }
 
-static void SetUniformVec3f(GlShader& glShader, std::string name, glm::vec3 data)
+void SetUniformVec3f(GlShader& glShader, std::string name, glm::vec3 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -305,7 +309,7 @@ static void SetUniformVec3f(GlShader& glShader, std::string name, glm::vec3 data
     glUniform3f(glShader.uniformNameToLocation.at(name), data[0], data[1], data[2]);
 }
 
-static void SetUniformVec3fv(GlShader& glShader, std::string name, std::vector<glm::vec3> data, GLsizei size)
+void SetUniformVec3fv(GlShader& glShader, std::string name, std::vector<glm::vec3> data, GLsizei size)
 {
     if (!glShader.shader) { return; }
     if (data.empty()) { return; }
@@ -317,7 +321,7 @@ static void SetUniformVec3fv(GlShader& glShader, std::string name, std::vector<g
     glUniform3fv(glShader.uniformNameToLocation.at(name), size, &data[0].x);
 }
 
-static void SetUniformVec2f(GlShader& glShader, std::string name, glm::vec2 data)
+void SetUniformVec2f(GlShader& glShader, std::string name, glm::vec2 data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -328,7 +332,7 @@ static void SetUniformVec2f(GlShader& glShader, std::string name, glm::vec2 data
     glUniform2f(glShader.uniformNameToLocation.at(name), data[0], data[1]);
 }
 
-static void SetUniformVec2fv(GlShader& glShader, std::string name, std::vector<glm::vec2> data, GLsizei size)
+void SetUniformVec2fv(GlShader& glShader, std::string name, std::vector<glm::vec2> data, GLsizei size)
 {
     if (!glShader.shader) { return; }
     if (data.empty()) { return; }
@@ -340,7 +344,7 @@ static void SetUniformVec2fv(GlShader& glShader, std::string name, std::vector<g
     glUniform2fv(glShader.uniformNameToLocation.at(name), size, &data[0].x);
 }
 
-static void SetUniform1f(GlShader& glShader, std::string name, GLfloat data)
+void SetUniform1f(GlShader& glShader, std::string name, GLfloat data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -351,7 +355,7 @@ static void SetUniform1f(GlShader& glShader, std::string name, GLfloat data)
     glUniform1f(glShader.uniformNameToLocation.at(name), data);
 }
 
-static void SetUniform1fv(GlShader& glShader, std::string name, std::vector<GLfloat> data, GLsizei size)
+void SetUniform1fv(GlShader& glShader, std::string name, std::vector<GLfloat> data, GLsizei size)
 {
     if (!glShader.shader) { return; }
     if (data.empty()) { return; }
@@ -363,7 +367,7 @@ static void SetUniform1fv(GlShader& glShader, std::string name, std::vector<GLfl
     glUniform1fv(glShader.uniformNameToLocation.at(name), size, &data[0]);
 }
 
-static void SetUniform1i(GlShader& glShader, std::string name, GLuint data)
+void SetUniform1i(GlShader& glShader, std::string name, GLuint data)
 {
     if (!glShader.shader) { return; }
     if (glShader.uniformNameToLocation.find(name) == glShader.uniformNameToLocation.end()) {
@@ -374,4 +378,4 @@ static void SetUniform1i(GlShader& glShader, std::string name, GLuint data)
     glUniform1i(glShader.uniformNameToLocation.at(name), data);
 }
  
-}
+}};

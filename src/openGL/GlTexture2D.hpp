@@ -1,10 +1,11 @@
 #pragma once
 
-#include <stdexcept>
+#include <limits>
+#include "GlError.hpp"
 
 #include <GL/glew.h>
 
-namespace GL {
+namespace CRRT { namespace GL {
 
 /*
     OpenGL Texture Data Containers
@@ -21,18 +22,18 @@ struct GlTextureDataFormat {
 
 struct GlTexture2DConfig
 {
-    GlTextureDataFormat::Format format;
+    GlTextureDataFormat::Format format = GlTextureDataFormat::RGBA8;
     size_t width    = 0;
     size_t height   = 0;
     size_t channels = 4;
 
-    bool   genMipmap = true;
-    GLenum minFiltering = GL_LINEAR_MIPMAP_LINEAR;
+    bool   genMipmap    = false;
+    GLenum minFiltering = GL_LINEAR;
     GLenum maxFiltering = GL_LINEAR;
-    GLenum wrapS = GL_REPEAT;
-    GLenum wrapT = GL_REPEAT;
-    GLenum compareMode = GL_NONE;
-    GLenum compareFunc = GL_LEQUAL; 
+    GLenum wrapS        = GL_REPEAT;
+    GLenum wrapT        = GL_REPEAT;
+    GLenum compareMode  = GL_NONE;
+    GLenum compareFunc  = GL_LEQUAL; 
 };
 
 struct GlTexture2D {
@@ -40,53 +41,60 @@ struct GlTexture2D {
     GLsizei width   = 0;
     GLsizei height  = 0;
 
-    GlTextureDataFormat::Format format;
+    GlTextureDataFormat::Format format = GlTextureDataFormat::RGBA8;
 };
 
 /*
     Binding Texture as OpenGL Active Texture
 */
 
-static void BindTexture(GLuint glTexture, GLuint glTextureUnit)
+void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
 {
     glActiveTexture(GL_TEXTURE0 + glTextureUnit);
-    glBindTexture(GL_TEXTURE_2D, glTexture);
+    glBindTexture(GL_TEXTURE_2D, glTexture.texture);
 }
 
 /*
     Loading and Releasing Textures to Device
 */
 
-static GlTexture2D CreateEmptyTexture(GL::GlTexture2DConfig glConfig)
+// Requires an empty output and a current GL context. On failure, release any
+// handle stored in glTexture with ReleaseTexture before reusing it.
+[[nodiscard]] GlError CreateEmptyTexture(GlTexture2D& glTexture, const GlTexture2DConfig& glConfig)
 {
-    GlTexture2D glTexture;
+    if (glTexture.texture) return GlError::textureAlreadyCreated;
+
+    auto isInvalidDimensions = [](int width, int height) -> bool {
+        return width == 0 || height == 0 ||
+               width  > static_cast<size_t>((std::numeric_limits<GLsizei>::max)()) ||
+               height > static_cast<size_t>((std::numeric_limits<GLsizei>::max)());
+    };
+    if (isInvalidDimensions(glConfig.width, glConfig.height)) { 
+        return GlError::textureInvalidDimensions; 
+    }
 
     glGenTextures(1, &glTexture.texture);
-    if (glTexture.texture == EMPTY_GL_TEXTURE) {
-        throw std::runtime_error("OpenGL failed to allocate new texture");
-    }
+    if (glTexture.texture == EMPTY_GL_TEXTURE) { return GlError::textureCreationFailed; }
 
     glBindTexture(GL_TEXTURE_2D, glTexture.texture);
 
     // Load As Correct format (only RGBA8 supported at this moment)
     switch(glConfig.format){
-        case GL::GlTextureDataFormat::RGBA8: 
-        {
+        case GL::GlTextureDataFormat::RGBA8: {
             glTexImage2D(GL_TEXTURE_2D, 
                 0, 
                 GL_RGBA8, 
                 glConfig.width, 
                 glConfig.height, 
                 0, 
-                GL_RGBA8, 
+                GL_RGBA, 
                 GL_UNSIGNED_BYTE, 
                 nullptr);
             break;
         }
         default:
         {
-            throw std::runtime_error("Unsupported texture data format tried to load in OpenGL");
-            break;
+            return GlError::textureUnsupportedFormat;
         }
     }
     
@@ -100,14 +108,15 @@ static GlTexture2D CreateEmptyTexture(GL::GlTexture2DConfig glConfig)
         glGenerateMipmap(GL_TEXTURE_2D);
     }
 
-    glTexture.width = glConfig.width;
-    glTexture.height = glConfig.height;
-
     glBindTexture(GL_TEXTURE_2D, 0);
-    return glTexture;
+
+    glTexture.width  = static_cast<GLsizei>(glConfig.width);
+    glTexture.height = static_cast<GLsizei>(glConfig.height);
+    glTexture.format = glConfig.format;
+    return GlError::glSuccess;
 }
 
-static void ReleaseTexture(GlTexture2D& glTexture)
+void ReleaseTexture(GlTexture2D& glTexture)
 {
     if (!glTexture.texture) return;
 
@@ -117,4 +126,4 @@ static void ReleaseTexture(GlTexture2D& glTexture)
     glTexture.height  = 0;
 }
 
-};
+}};
