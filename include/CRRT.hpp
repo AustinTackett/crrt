@@ -36,7 +36,8 @@ struct WindowConfig
 
 struct Time
 {
-    inline static std::chrono::steady_clock::time_point LastUpdateTime;
+    inline static std::chrono::steady_clock::time_point Clock;
+    inline static float CurrentTime;
     inline static float DeltaTime = 0.0f;
 };
 
