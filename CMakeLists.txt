@@ -58,23 +58,17 @@ FetchContent_Declare(glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.4
     GIT_SHALLOW TRUE)
-FetchContent_Declare(glm
-    GIT_REPOSITORY https://github.com/g-truc/glm.git
-    GIT_TAG 1.0.3
-    GIT_SHALLOW TRUE)
 
 # External Depedency Build Options
 set(CMAKE_EXPORT_COMPILE_COMMANDS OFF)
 set(ONLY_LIBS ON CACHE BOOL "" FORCE)
 set(glew-cmake_BUILD_SHARED OFF CACHE BOOL "" FORCE)
 set(glew-cmake_BUILD_STATIC ON CACHE BOOL "" FORCE)
-set(GLM_BUILD_LIBRARY OFF CACHE BOOL "" FORCE)
 
 # Download Dependencies
-FetchContent_MakeAvailable(glew glfw glm)
+FetchContent_MakeAvailable(glew glfw)
 
 target_link_libraries(SceneRayTracer PUBLIC
     libglew_static 
     glfw 
-    glm::glm
 )
