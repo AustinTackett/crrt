@@ -5,8 +5,9 @@
 #include <cuda_gl_interop.h>
 
 #include "CudaContext.hpp"
-#include "CudaError.hpp"
-#include "GlTexture2D.hpp"
+#include "CudaMacros.hpp"
+#include "openGL/GlTexture2D.hpp"
+#include "ErrorCodes.hpp"
 
 /*
     Container to store all Cuda and OpenGL Texture Interop Resources

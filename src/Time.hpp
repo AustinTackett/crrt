@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../include/CRRT.hpp"
+
 #include <chrono>
 
 /*
@@ -8,12 +10,6 @@
 */
 
 namespace CRRT {
-
-struct Time
-{
-    inline static std::chrono::steady_clock::time_point LastUpdateTime;
-    inline static float DeltaTime = 0.0f;
-};
 
 void StartTime()
 {

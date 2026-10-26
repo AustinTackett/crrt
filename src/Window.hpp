@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../include/CRRT.hpp"
+
 #include <functional>
 
 
@@ -11,6 +13,7 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
+#include "ErrorCodes.hpp"
 #include "Frame.hpp"
 #include "Input.hpp"
 #include "Time.hpp"
@@ -24,49 +27,47 @@ namespace CRRT {
 using MouseButtonCallbackFn = void (*)(GLFWwindow*, int, int, int);
 using KeyCallbackFn         = void (*)(GLFWwindow*, int, int, int, int);
 using CursorCallback        = void (*)(GLFWwindow*, double, double);
-using DrawCallback          = std::function<void(Frame&)>;
+using DrawCallback          = std::function<void(FrameView)>;
 
 constexpr GLFWwindow* EMPTY_WINDOW = nullptr;
 
-enum class WindowErrorCode
-{
-    windowsSuccess,
-    windowsAlreadyCreated,
-    windowsInvalidWindow,
-    windowsGlfwInitializationFailed,
-    windowsCreationFailed,
-    windowsContextActivationFailed,
-    windowsGlewInitializationFailed,
-    windowsFrameOperationFailed,
-    windowsFrameCleanupFailed,
-    windowsDrawCallbackFailed
-};
+/*
+    Returning Errors
+*/
 
 struct WindowError
 {
     bool valid = true;
-    WindowErrorCode code = WindowErrorCode::windowsSuccess;
+    WindowErrorCode window = WindowErrorCode::windowsSuccess;
+    CUDA::CudaError cuda   = CUDA::CudaError::cudaSuccess;
+    GL::GlError gl         = GL::GlError::glSuccess;
 };
+
+WindowError CreateWindowError(bool valid, WindowErrorCode code, const FrameError& frameError) {
+    return WindowError{false, code, frameError.cuda, frameError.gl};
+}
 
 bool hasWindowError(const WindowError& error)
 {
     return !error.valid;
 }
 
-struct WindowConfig
+inline std::string GetWindowErrorString(const WindowError& error)
 {
-    std::string name = "Window";
-    
-    int resWidth   = 1920;
-    int resHeight  = 1080;
-    int initWidth  = 500;
-    int initHeight = 500;
+    std::string message = GetWindowErrorString(error.window);
+    if (error.cuda != cudaSuccess) {
+        message += "\nCUDA: " + CUDA::CudaGetErrorString(error.cuda);
+    }
+    if (error.gl != GL::GlError::glSuccess) {
+        message += "\nOpenGL: " + GL::glGetErrorString(error.gl);
+    }
 
-    bool clearColor = true;
-    bool resizable  = true;
-    bool vsync      = true;
-    bool cursorVisible = true;
-};
+    return message;
+}
+
+/*
+    Window Data Containers
+*/
 
 struct Window 
 {
@@ -119,12 +120,13 @@ std::tuple<double, double> GetCursorPosition(Window& window);
         window.frame, 
         windowConfig.resWidth, 
         windowConfig.resHeight);
-    if (hasFrameError(frameError)) return {false, WindowErrorCode::windowsFrameOperationFailed};
+    if (hasFrameError(frameError)) return CreateWindowError(false, WindowErrorCode::windowsFrameOperationFailed, frameError);
 
     glfwSwapInterval(windowConfig.vsync);
     CursorVisibility(window, windowConfig.cursorVisible);
     AttachInputCallbacks(window, KeyCallback, MouseButtonCallback);
     PollEvents(window);
+    StartTime();
 
     return {};
 }
@@ -151,25 +153,26 @@ std::tuple<double, double> GetCursorPosition(Window& window);
     FrameError beginError = BeginCudaAccess(window.frame);
     if (hasFrameError(beginError)) {
         FrameError cleanupError = EndCudaAccess(window.frame);
-        if (hasFrameError(cleanupError)) return {false, WindowErrorCode::windowsFrameCleanupFailed};
-        return {false, WindowErrorCode::windowsFrameOperationFailed};
+        if (hasFrameError(cleanupError)) return CreateWindowError(false, WindowErrorCode::windowsFrameCleanupFailed, cleanupError);
+        return CreateWindowError(false, WindowErrorCode::windowsFrameOperationFailed, beginError);
     }
 
-    // I have been try to avoid try catch, but if the user throws a runtime error we need to clean up after
+    // I have been try to avoid try catch, but if the user's callback throws a runtime error we need to clean up after
     try {
-        drawCallback(window.frame);
+        drawCallback(GetFrameView(window.frame));
     } catch (...) {
         // User's callback threw an error and we need to clean up and exit (unrecoverable)
         FrameError cleanupError = EndCudaAccess(window.frame);
-        if (hasFrameError(cleanupError))return {false, WindowErrorCode::windowsFrameCleanupFailed};
-        return {false, WindowErrorCode::windowsDrawCallbackFailed};
+        if (hasFrameError(cleanupError)) return CreateWindowError(false, WindowErrorCode::windowsFrameCleanupFailed, cleanupError);
+        return {false, WindowErrorCode::windowDrawCallbackException};
     }
     
     // Return control back to OpenGL ad if an error occurs return unrecoverable error
     FrameError endError = EndCudaAccess(window.frame);
-    if (hasFrameError(endError)) return {false, WindowErrorCode::windowsFrameOperationFailed};
+    if (hasFrameError(endError)) return CreateWindowError(false, WindowErrorCode::windowsFrameOperationFailed, endError);
 
-    // SUCCESSFUL DRAW WITH CUDA YIPEEEEE!
+    // CUDA WAS ABLE TO WRITE TO THE OPENGL RESOURCE AND WE CAN DRAW IT TO THE SCREEN YIPEEEEE!
+    Draw(window.frame);
     return WindowError{};
 }
 
@@ -184,8 +187,14 @@ std::tuple<double, double> GetCursorPosition(Window& window);
     glfwDestroyWindow(window.window);
     window.window = EMPTY_WINDOW;
 
-    if (hasFrameError(frameError)) return {false, WindowErrorCode::windowsFrameOperationFailed};
+    if (hasFrameError(frameError)) return CreateWindowError(false, WindowErrorCode::windowsFrameOperationFailed, frameError);
     return WindowError{};
+}
+
+// Kill window no matter what is happening, should ReleaseWindow() before termination to clean up frame resources
+void TerminateWindow()
+{
+    glfwTerminate();
 }
 
 /*

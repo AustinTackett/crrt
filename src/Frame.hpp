@@ -1,16 +1,18 @@
 #pragma once
 
+#include "../include/CRRT.hpp"
+
 #include <string>
 #include <string_view>
 
-#include "CudaError.hpp"
-#include "CudaTexture2D.hpp"
-#include "GlShader.hpp"
-#include "openGL/GlError.hpp"
+#include "ErrorCodes.hpp"
+#include "cuda/CudaTexture2D.hpp"
+#include "openGL/GlShader.hpp"
 #include "openGL/GlVao.hpp"
 
 namespace CRRT {
 
+// I am going to swap these to reading from config.yaml
 constexpr std::string_view VERTEX_SHADER_PATH   = "src/openGL/GlShaders/GIRenderTexture2D.vert";
 constexpr std::string_view FRAGMENT_SHADER_PATH = "src/openGL/GlShaders/GlRenderTexture2D.frag";
 
@@ -20,8 +22,8 @@ constexpr std::string_view FRAGMENT_SHADER_PATH = "src/openGL/GlShaders/GlRender
 
 struct FrameError {
     bool valid = true;
-
-    CUDA::CudaError cuda = cudaSuccess;
+    
+    CUDA::CudaError cuda = CUDA::CudaError::cudaSuccess;
     GL::GlError     gl   = GL::GlError::glSuccess; 
 };
 
@@ -43,6 +45,12 @@ struct Frame
     GL::GlTexture2D     glTexture;
     GL::GlShader        glShader;
 };
+
+// Call after BeginCudaAccess succeeds; the view is valid until EndCudaAccess.
+inline FrameView GetFrameView(const Frame& frame)
+{
+    return {frame.cudaTexture.surface, frame.glTexture.width, frame.glTexture.height};
+}
 
 /*
     Creating/Destroying Frame Object
@@ -69,7 +77,10 @@ struct Frame
 
     auto cudaError = CUDA::FetchCudaContext(frame.cudaContext);
     if (cudaError != cudaSuccess) return {false, cudaError};
-    cudaError = CUDA::RegisterTextureInterop(frame.cudaContext, frame.cudaTexture, frame.glTexture);
+    cudaError = CUDA::RegisterTextureInterop(
+        frame.cudaContext, 
+        frame.cudaTexture, 
+        frame.glTexture);
     if (cudaError != cudaSuccess) return {false, cudaError};
 
     return FrameError{};
@@ -77,7 +88,7 @@ struct Frame
 
 [[nodiscard]] FrameError ReleaseFrame(Frame& frame)
 {
-    auto error = CUDA::UnMemMapTexture(frame.cudaContext, frame.cudaTexture);
+    CUDA::CudaError error = CUDA::UnMemMapTexture(frame.cudaContext, frame.cudaTexture);
     if (error != cudaSuccess) return {false, error};
     error = CUDA::UnregisterTextureInterop(frame.cudaContext, frame.cudaTexture);
     
@@ -121,8 +132,5 @@ void Draw(Frame& frame)
     return {error == cudaSuccess, error};
 }
 
-// IMPORTANT: Make sure to use BeginCudaAccess() before attempting to read or write to frame in cuda kernel 
-__device__ void   Write(Frame& frame, int x, int y, uchar4 color);
-__device__ uchar4 Read (Frame& frame, int x, int y);
 
 }

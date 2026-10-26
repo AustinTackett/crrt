@@ -1,7 +1,8 @@
 #pragma once
 
-#include "GlError.hpp"
 #include <GL/glew.h>
+
+#include "ErrorCodes.hpp"
 
 namespace CRRT { namespace GL {
 

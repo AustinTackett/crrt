@@ -13,6 +13,12 @@ cmake --build --preset ninja-debug --target SceneRayTracer
 cmake --preset vs2022 -DFETCHCONTENT_QUIET=OFF
 cmake --build --preset vs-debug --target SceneRayTracer
 
+// Build Debug Color Test
+cmake -S examples/debug-colors -B build/debug-colors-vs -G "Visual Studio 17 2022" -A x64
+cmake --build build/debug-colors-vs --config Release --target debug-colors --parallel
+
+.\build\debug-colors-vs\Release\debug-colors.exe
+
 // Notes on coding style, been writing more c99 and loving that method
 // Lets you write cuda kernels and render it to the screen 
 

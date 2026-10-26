@@ -1,13 +1,20 @@
 #pragma once
 
-#include <string>
+#include <cstdio>
+#include <string> 
+
+#include <cuda_runtime.h>
+#include <cuda_runtime_api.h>
+#include <driver_types.h>
+
+namespace CRRT { 
 
 /*
     OpenGL Related Errors
     -> OpenGL has its own error retrieval system, but its primarily for debugging
 */
 
-namespace CRRT { namespace GL {
+namespace GL {
 
 enum class GlError
 {
@@ -48,6 +55,58 @@ inline std::string glGetErrorString(GlError error)
         case GlError::vaoCreationFailed:               return "VAO creation failed";
         default:                                       return "Unknown OpenGL error";
     }
+} 
+
+}
+    
+namespace CUDA {
+
+/*
+    Cuda Related Errors
+*/
+
+// No need to make your own error enum and toString() because cuda already made it
+using CudaError = cudaError_t;
+inline std::string CudaGetErrorString(CudaError error) 
+{
+    return std::string(cudaGetErrorString(error));
 }
 
-}};
+}
+
+/*
+    Errors Generated From the Window
+*/
+
+enum class WindowErrorCode
+{
+    windowsSuccess,
+    windowsAlreadyCreated,
+    windowsInvalidWindow,
+    windowsGlfwInitializationFailed,
+    windowsCreationFailed,
+    windowsContextActivationFailed,
+    windowsGlewInitializationFailed,
+    windowsFrameOperationFailed,
+    windowsFrameCleanupFailed,
+    windowDrawCallbackException,
+};
+
+inline std::string GetWindowErrorString(WindowErrorCode error)
+{
+    switch (error) {
+        case WindowErrorCode::windowsSuccess:                  return "Success";
+        case WindowErrorCode::windowsAlreadyCreated:           return "Window already created";
+        case WindowErrorCode::windowsInvalidWindow:            return "Invalid window";
+        case WindowErrorCode::windowsGlfwInitializationFailed: return "GLFW initialization failed";
+        case WindowErrorCode::windowsCreationFailed:           return "Window creation failed";
+        case WindowErrorCode::windowsContextActivationFailed:  return "Window context activation failed";
+        case WindowErrorCode::windowsGlewInitializationFailed: return "GLEW initialization failed";
+        case WindowErrorCode::windowsFrameOperationFailed:     return "Window frame operation failed";
+        case WindowErrorCode::windowsFrameCleanupFailed:       return "Window frame cleanup failed";
+        case WindowErrorCode::windowDrawCallbackException:     return "Window draw callback threw an exception";
+        default:                                               return "Unknown window error";
+    }
+}
+
+};

@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../include/CRRT.hpp"
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -9,72 +11,6 @@
 */
 
 namespace CRRT {
-
-struct Input
-{
-    // Special Keys
-    inline static bool KEY_ESCAPE         = false;
-    inline static bool KEY_ENTER          = false;
-    inline static bool KEY_TAB            = false;
-    inline static bool KEY_CONTROL        = false;
-    inline static bool KEY_SPACE          = false;
-    inline static bool KEY_SHIFT          = false;
-    inline static bool KEY_ALT            = false;
-    
-    // Arrow Keys
-    inline static bool KEY_UP    = false;
-    inline static bool KEY_DOWN  = false;
-    inline static bool KEY_LEFT  = false;
-    inline static bool KEY_RIGHT = false;
-
-    // Mouse
-    inline static bool   MOUSE_RIGHT_CLICK = false;    
-    inline static bool   MOUSE_LEFT_CLICK  = false;
-    inline static double MOUSE_X_DELTA     = 0.0;
-    inline static double MOUSE_Y_DELTA     = 0.0;
-    inline static double MOUSE_X           = 0.0;
-    inline static double MOUSE_Y           = 0.0;
-
-    // Numeric Keys
-    inline static bool KEY_0 = false;
-    inline static bool KEY_1 = false;
-    inline static bool KEY_2 = false;
-    inline static bool KEY_3 = false;
-    inline static bool KEY_4 = false;
-    inline static bool KEY_5 = false;
-    inline static bool KEY_6 = false;
-    inline static bool KEY_7 = false;
-    inline static bool KEY_8 = false;
-    inline static bool KEY_9 = false;
-
-    // Alphabetical Keys
-    inline static bool KEY_W = false;
-    inline static bool KEY_A = false;
-    inline static bool KEY_S = false;
-    inline static bool KEY_D = false;
-    inline static bool KEY_B = false;
-    inline static bool KEY_C = false;
-    inline static bool KEY_E = false;
-    inline static bool KEY_F = false;
-    inline static bool KEY_G = false;
-    inline static bool KEY_H = false;
-    inline static bool KEY_I = false;
-    inline static bool KEY_J = false;
-    inline static bool KEY_K = false;
-    inline static bool KEY_L = false;
-    inline static bool KEY_M = false;
-    inline static bool KEY_N = false;
-    inline static bool KEY_O = false;
-    inline static bool KEY_P = false;
-    inline static bool KEY_Q = false;
-    inline static bool KEY_R = false;
-    inline static bool KEY_T = false;
-    inline static bool KEY_U = false;
-    inline static bool KEY_V = false;
-    inline static bool KEY_X = false;
-    inline static bool KEY_Y = false;
-    inline static bool KEY_Z = false;
-};
 
 /* Helper Functions */
 static inline void keyUp(GLFWwindow* window, int key, int scancode, int action, int mods)

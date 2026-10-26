@@ -1,9 +1,10 @@
 #pragma once
 
 #include <limits>
-#include "GlError.hpp"
 
 #include <GL/glew.h>
+
+#include "ErrorCodes.hpp"
 
 namespace CRRT { namespace GL {
 

@@ -4,12 +4,13 @@
 #include <string>
 #include <fstream>
 #include <cstdio>
-#include "GlError.hpp"
 #include <unordered_map>
 #include <vector>
 
 #include <GL/glew.h>
 #include <glm/glm.hpp>
+
+#include "ErrorCodes.hpp"
 
 namespace CRRT { namespace GL {
 
@@ -74,8 +75,6 @@ void BindShader(const GlShader& glShader)
     Loading and Releasing Shaders to Device
 */
 
-// Requires an empty output and a current GL context. ReleaseShader handles
-// any program stored in shader, including a program that failed to link.
 [[nodiscard]] GlError LoadShader(GlShader& shader, const GlShaderConfig& glConfig)
 {
     if (shader.shader) return GlError::shaderAlreadyCreated;
@@ -92,7 +91,7 @@ void BindShader(const GlShader& glShader)
     GLuint newFragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 
     bool shaderCreationSuccess = newVertexShader && newFragmentShader;
-    if (shaderCreationSuccess) {
+    if (!shaderCreationSuccess) {
         if (newVertexShader)   glDeleteShader(newVertexShader);
         if (newFragmentShader) glDeleteShader(newFragmentShader);
         return GlError::shaderCreationFailed;

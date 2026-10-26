@@ -4,7 +4,8 @@
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
-#include "CudaError.hpp"
+#include "ErrorCodes.hpp"
+#include "CudaMacros.hpp"
 
 /*
     Info on Cuda Device
@@ -21,7 +22,7 @@ struct CudaContext
 
 [[nodiscard]] CudaError FetchCudaContext(CudaContext& context) noexcept
 {
-    context = {};
+    context = CudaContext{};
 
     CUDA_CHECK_OR_RETURN(cudaGLGetDevices(
         &context.cudaDeviceCount, 
