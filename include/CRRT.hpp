@@ -79,6 +79,7 @@ void CursorVisibility(Window& window, bool isVisible);
 
 struct Time
 {
+    // Seconds
     inline static double CurrentTime;
     inline static double DeltaTime = 0.0f;
 };

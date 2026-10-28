@@ -18,7 +18,6 @@ namespace CRRT { namespace CUDA {
 struct CudaTexture2D
 {
     cudaGraphicsResource* textureResource = nullptr;
-    cudaResourceDesc      textureDesc{};
     cudaSurfaceObject_t   surface = 0;
     bool                  isMemMapped = false;
 };
@@ -38,8 +37,9 @@ struct CudaTexture2D
 {
     Errors errors;
 
-    if (cudaTexture.textureResource) { 
-        errors |= ErrorCode::cudaTextureAlreadyRegistered; 
+    if (cudaTexture.textureResource || cudaTexture.isMemMapped || cudaTexture.surface)
+    {
+        errors |= ErrorCode::cudaTextureAlreadyRegistered;
     }
     if (!glTexture.texture) { 
         errors |= ErrorCode::cudaInvalidGlTexture;
@@ -52,8 +52,10 @@ struct CudaTexture2D
         errors |= ErrorCode::cudaSetDeviceFailed;
         return errors;
     }
+
+    cudaGraphicsResource_t resource = nullptr;
     if (cudaGraphicsGLRegisterImage(
-        &cudaTexture.textureResource,
+        &resource,
         glTexture.texture,
         GL_TEXTURE_2D,
         cudaGraphicsRegisterFlagsSurfaceLoadStore))
@@ -62,6 +64,7 @@ struct CudaTexture2D
         return errors;
     }
 
+    cudaTexture.textureResource = resource;
     return errors;
 }
 
@@ -114,33 +117,32 @@ struct CudaTexture2D
         errors |= ErrorCode::cudaTextureMapFailed;
         return errors;
     }
-    cudaTexture.isMemMapped = true;
 
-    // We need a new surface object every frame according to Nividia
-    cudaTexture.textureDesc = {};
-    cudaResourceDesc textureDesc{};
-    textureDesc.resType = cudaResourceTypeArray;
-    cudaSurfaceObject_t surface = 0;
+    cudaTexture.isMemMapped = true;
+    cudaArray_t array = nullptr;
     if (cudaGraphicsSubResourceGetMappedArray(
-        &textureDesc.res.array.array,
+        &array,
         cudaTexture.textureResource,
         0,
-        0)) 
+        0) != cudaSuccess)
     {
         errors |= ErrorCode::cudaMappedArrayQueryFailed;
-    } else if (cudaCreateSurfaceObject(
-        &surface,
-        &textureDesc)) 
-    {
-        errors |= ErrorCode::cudaSurfaceCreationFailed;
-    } else {
-        cudaTexture.textureDesc = textureDesc;
-        cudaTexture.surface = surface;
+        return errors | UnMemMapTexture(cudaContext, cudaTexture);
     }
 
-    if (errors) {
-        errors |= UnMemMapTexture(cudaContext, cudaTexture);
+    cudaSurfaceObject_t surface = 0;
+    cudaResourceDesc description{};
+    description.resType = cudaResourceTypeArray;
+    description.res.array.array = array;
+    if (cudaCreateSurfaceObject(
+        &surface,
+        &description)) 
+    {
+        errors |= ErrorCode::cudaSurfaceCreationFailed;
+        return errors | UnMemMapTexture(cudaContext, cudaTexture);
     }
+
+    cudaTexture.surface = surface;
     return errors;
 }
 
@@ -149,7 +151,6 @@ struct CudaTexture2D
 {
     Errors errors;
     if (!cudaTexture.isMemMapped && !cudaTexture.surface) {
-        cudaTexture.textureDesc = {};
         return errors;
     }
 
@@ -181,9 +182,6 @@ struct CudaTexture2D
         }
     }
 
-    if (!cudaTexture.isMemMapped && !cudaTexture.surface) {
-        cudaTexture.textureDesc = {};
-    }
     return errors;
 }
 

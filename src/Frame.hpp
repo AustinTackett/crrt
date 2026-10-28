@@ -35,12 +35,10 @@ struct FrameView
 
 */
 
-struct FrameView;
 FrameView GetFrameView(const Frame& frame);
+[[nodiscard]] Errors ReleaseFrame(Frame& frame);
 
-[[nodiscard]] inline Errors ReleaseFrame(Frame& frame);
-
-[[nodiscard]] inline Errors CreateFrame(Frame& frame, int width, int height)
+[[nodiscard]] Errors CreateFrame(Frame& frame, int width, int height)
 {
     Errors errors;
     if (frame.glVao.vao || frame.glTexture.texture || frame.glShader.shader ||
@@ -52,27 +50,28 @@ FrameView GetFrameView(const Frame& frame);
     if (width <= 0 || height <= 0) {
         errors |= ErrorCode::glTextureInvalidDimensions;
     }
-    if (errors) { return errors; }
+    if (errors) { 
+        return errors; 
+    }
     
     GL::GlTexture2DConfig textureConfig;
     textureConfig.width = width;
     textureConfig.height = height;
 
-    errors = GL::CreateVao(frame.glVao);
+    errors |= GL::CreateVao(frame.glVao);
+    if (errors) { return errors; }
     errors |= GL::LoadShader(frame.glShader);
+    if (errors) { return errors; }
     errors |= GL::CreateEmptyTexture(frame.glTexture, textureConfig);
+    if (errors) { return errors; }
+
     errors |= CUDA::FetchCudaContext(frame.cudaContext);
-    if (errors) {
-        return errors | ReleaseFrame(frame);
-    }
+    if (errors) { return errors; }
 
     errors |= CUDA::RegisterTextureInterop(
         frame.cudaContext,
         frame.cudaTexture,
         frame.glTexture);
-    if (errors) {
-        return errors | ReleaseFrame(frame);
-    }
 
     return errors;
 }
@@ -80,22 +79,38 @@ FrameView GetFrameView(const Frame& frame);
 [[nodiscard]] inline Errors ReleaseFrame(Frame& frame)
 {
     Errors errors;
-    
-    errors = CUDA::UnMemMapTexture(frame.cudaContext, frame.cudaTexture);
-    if (frame.cudaTexture.textureResource) {
-        errors |= CUDA::UnregisterTextureInterop(frame.cudaContext, frame.cudaTexture);
+
+    if (frame.cudaTexture.isMemMapped || frame.cudaTexture.surface) {
+        errors |= CUDA::UnMemMapTexture(
+            frame.cudaContext,
+            frame.cudaTexture
+        );
     }
-    if (!frame.cudaTexture.textureResource && !frame.cudaTexture.isMemMapped && !frame.cudaTexture.surface) {
+
+    if (frame.cudaTexture.textureResource &&
+        !frame.cudaTexture.isMemMapped &&
+        !frame.cudaTexture.surface)
+    {
+        errors |= CUDA::UnregisterTextureInterop(
+            frame.cudaContext,
+            frame.cudaTexture
+        );
+    }
+
+    if (!frame.cudaTexture.textureResource &&
+        !frame.cudaTexture.isMemMapped &&
+        !frame.cudaTexture.surface)
+    {
         GL::ReleaseTexture(frame.glTexture);
         frame.cudaContext = {};
     }
-    GL::ReleaseShader(frame.glShader);
-    GL::ReleaseVao(frame.glVao); 
 
+    GL::ReleaseShader(frame.glShader);
+    GL::ReleaseVao(frame.glVao);
     return errors;
 }
 
-inline void Draw(Frame& frame)
+void Draw(Frame& frame)
 {
     if (frame.cudaTexture.isMemMapped || frame.cudaTexture.surface) { return; }
 
@@ -105,12 +120,12 @@ inline void Draw(Frame& frame)
     GL::DrawVao(frame.glVao);
 }
 
-[[nodiscard]] inline Errors BeginCudaAccess(Frame& frame)
+[[nodiscard]] Errors BeginCudaAccess(Frame& frame)
 {
     return CUDA::MemMapTexture(frame.cudaContext, frame.cudaTexture);
 }
 
-[[nodiscard]] inline Errors EndCudaAccess(Frame& frame)
+[[nodiscard]] Errors EndCudaAccess(Frame& frame)
 {
     return CUDA::UnMemMapTexture(frame.cudaContext, frame.cudaTexture);
 }

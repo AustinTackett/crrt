@@ -6,4 +6,4 @@
 .clangd
 commands.md
 
-#.zip
+*.zip

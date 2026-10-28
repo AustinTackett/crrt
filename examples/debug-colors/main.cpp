@@ -25,7 +25,8 @@ int main()
         } 
     }
 
-    // Host (CPU) must free device resources (GPU), so we still grab any errors
+    // Host (CPU) must still free device resources (GPU), so we still grab any errors from that process.
+    // This is terminal and you should consider the window dead and no longer access any of its resources.
     errors |= ReleaseWindow(window);
 
     // Log all the errors for the user

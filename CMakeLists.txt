@@ -11,7 +11,7 @@ option(CRRT_BUILD_EXAMPLES
 
 add_library(SceneRayTracer STATIC
     src/Window.cpp
-    src/Frame.cu
+    kernels/FrameOperations.cu
 )
 target_include_directories(SceneRayTracer
     PUBLIC
@@ -72,3 +72,4 @@ option(CRRT_BUILD_EXAMPLES "Build SceneRayTracer examples" ${PROJECT_IS_TOP_LEVE
 if(CRRT_BUILD_EXAMPLES)
     add_subdirectory(examples/debug-colors)
 endif()
+

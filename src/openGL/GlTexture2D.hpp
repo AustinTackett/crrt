@@ -106,7 +106,7 @@ inline void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
         }
         default:
         {
-            break; // Format was validated before allocating the texture.
+            break;
         }
     }
     if (glGetError() != GL_NO_ERROR) {
