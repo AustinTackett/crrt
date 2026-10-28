@@ -1,136 +1,121 @@
 #pragma once
 
-#include "../include/CRRT.hpp"
+#include "../include/Crrt.hpp"
 
-#include <string>
-#include <string_view>
-
-#include "ErrorCodes.hpp"
-#include "cuda/CudaTexture2D.hpp"
-#include "openGL/GlShader.hpp"
-#include "openGL/GlVao.hpp"
+#include "CudaTexture2D.hpp"
+#include "GlShader.hpp"
+#include "GlVao.hpp"
 
 namespace CRRT {
-
-// I am going to swap these to reading from config.yaml
-constexpr std::string_view VERTEX_SHADER_PATH   = "src/openGL/GlShaders/GIRenderTexture2D.vert";
-constexpr std::string_view FRAGMENT_SHADER_PATH = "src/openGL/GlShaders/GlRenderTexture2D.frag";
-
-/*
-    Tracking if Frame Operation Returned An Error
-*/
-
-struct FrameError {
-    bool valid = true;
-    
-    CUDA::CudaError cuda = CUDA::CudaError::cudaSuccess;
-    GL::GlError     gl   = GL::GlError::glSuccess; 
-};
-
-bool hasFrameError(const FrameError& error)
-{
-    return !error.valid;
-}
-
-/*
-    Frame contains all data from Cuda and OpenGL that is need to draw and write to the screen
-*/
 
 struct Frame
 {
     CUDA::CudaContext   cudaContext;
     CUDA::CudaTexture2D cudaTexture;
-
     GL::GlVao           glVao;
     GL::GlTexture2D     glTexture;
     GL::GlShader        glShader;
 };
 
-// Call after BeginCudaAccess succeeds; the view is valid until EndCudaAccess.
-inline FrameView GetFrameView(const Frame& frame)
-{
-    return {frame.cudaTexture.surface, frame.glTexture.width, frame.glTexture.height};
-}
-
 /*
-    Creating/Destroying Frame Object
+    Stores all the data of the pixels on screen, can begin draw pipeline to draw it to the screen, and 
+    has functionality to open and close access of the pixel data to cuda.
 */
 
-[[nodiscard]] FrameError CreateFrame(Frame& frame, int width, int height)
-{    
-    GL::GlTexture2DConfig config;
-    config.format       = GL::GlTextureDataFormat::RGBA8;
-    config.width        = width;
-    config.height       = height;
+/*
 
-    GL::GlShaderConfig shaderConfig = { 
-        std::string(VERTEX_SHADER_PATH), 
-        std::string(FRAGMENT_SHADER_PATH) 
-    };
+From: include/Crrt.hpp
 
-    auto glError = GL::CreateVao(frame.glVao);
-    if (glError != GL::GlError::glSuccess) return {false, cudaSuccess, glError};
-    glError = GL::LoadShader(frame.glShader, shaderConfig);
-    if (glError != GL::GlError::glSuccess) return {false, cudaSuccess, glError};
-    glError = GL::CreateEmptyTexture(frame.glTexture, config);
-    if (glError != GL::GlError::glSuccess) return {false, cudaSuccess, glError};
+struct FrameView
+{
+    cudaSurfaceObject_t surface = 0;
+    int width = 0;
+    int height = 0;
+};
 
-    auto cudaError = CUDA::FetchCudaContext(frame.cudaContext);
-    if (cudaError != cudaSuccess) return {false, cudaError};
-    cudaError = CUDA::RegisterTextureInterop(
-        frame.cudaContext, 
-        frame.cudaTexture, 
+*/
+
+struct FrameView;
+FrameView GetFrameView(const Frame& frame);
+
+[[nodiscard]] inline Errors ReleaseFrame(Frame& frame);
+
+[[nodiscard]] inline Errors CreateFrame(Frame& frame, int width, int height)
+{
+    Errors errors;
+    if (frame.glVao.vao || frame.glTexture.texture || frame.glShader.shader ||
+        frame.cudaTexture.textureResource || frame.cudaTexture.isMemMapped || 
+        frame.cudaTexture.surface) 
+    {
+        errors |= ErrorCode::frameAlreadyCreated;
+    }
+    if (width <= 0 || height <= 0) {
+        errors |= ErrorCode::glTextureInvalidDimensions;
+    }
+    if (errors) { return errors; }
+    
+    GL::GlTexture2DConfig textureConfig;
+    textureConfig.width = width;
+    textureConfig.height = height;
+
+    errors = GL::CreateVao(frame.glVao);
+    errors |= GL::LoadShader(frame.glShader);
+    errors |= GL::CreateEmptyTexture(frame.glTexture, textureConfig);
+    errors |= CUDA::FetchCudaContext(frame.cudaContext);
+    if (errors) {
+        return errors | ReleaseFrame(frame);
+    }
+
+    errors |= CUDA::RegisterTextureInterop(
+        frame.cudaContext,
+        frame.cudaTexture,
         frame.glTexture);
-    if (cudaError != cudaSuccess) return {false, cudaError};
+    if (errors) {
+        return errors | ReleaseFrame(frame);
+    }
 
-    return FrameError{};
+    return errors;
 }
 
-[[nodiscard]] FrameError ReleaseFrame(Frame& frame)
+[[nodiscard]] inline Errors ReleaseFrame(Frame& frame)
 {
-    CUDA::CudaError error = CUDA::UnMemMapTexture(frame.cudaContext, frame.cudaTexture);
-    if (error != cudaSuccess) return {false, error};
-    error = CUDA::UnregisterTextureInterop(frame.cudaContext, frame.cudaTexture);
+    Errors errors;
     
-    if (error != cudaSuccess) return {false, error};
-    GL::ReleaseTexture(frame.glTexture);
+    errors = CUDA::UnMemMapTexture(frame.cudaContext, frame.cudaTexture);
+    if (frame.cudaTexture.textureResource) {
+        errors |= CUDA::UnregisterTextureInterop(frame.cudaContext, frame.cudaTexture);
+    }
+    if (!frame.cudaTexture.textureResource && !frame.cudaTexture.isMemMapped && !frame.cudaTexture.surface) {
+        GL::ReleaseTexture(frame.glTexture);
+        frame.cudaContext = {};
+    }
     GL::ReleaseShader(frame.glShader);
-    
-    if (frame.glVao.vao) GL::ReleaseVao(frame.glVao);
+    GL::ReleaseVao(frame.glVao); 
 
-    return FrameError{};;
+    return errors;
 }
 
-void Draw(Frame& frame)
+inline void Draw(Frame& frame)
 {
-    if (frame.cudaTexture.isMemMapped) return;
+    if (frame.cudaTexture.isMemMapped || frame.cudaTexture.surface) { return; }
 
     GL::BindShader(frame.glShader);
-    GL::BindTexture(frame.glTexture, GL_TEXTURE0);
+    GL::BindTexture(frame.glTexture, 0);
     GL::SetUniform1i(frame.glShader, "frameTexture", 0);
     GL::DrawVao(frame.glVao);
 }
 
-// Give control of OpenGL resources to Cuda
-[[nodiscard]] FrameError BeginCudaAccess(Frame& frame)
+[[nodiscard]] inline Errors BeginCudaAccess(Frame& frame)
 {
-    if (!frame.cudaTexture.textureResource) {
-        return {false, cudaErrorInvalidResourceHandle};
-    }
-    if (frame.cudaTexture.isMemMapped) {
-        return {false, cudaErrorInvalidResourceHandle};
-    }
-
-    const auto error = CUDA::MemMapTexture(frame.cudaContext, frame.cudaTexture);
-    return {error == cudaSuccess, error};
+    return CUDA::MemMapTexture(frame.cudaContext, frame.cudaTexture);
 }
 
-// Return control to OpenGL
-[[nodiscard]] FrameError EndCudaAccess(Frame& frame)
+[[nodiscard]] inline Errors EndCudaAccess(Frame& frame)
 {
-    const auto error = CUDA::UnMemMapTexture(frame.cudaContext, frame.cudaTexture);
-    return {error == cudaSuccess, error};
+    return CUDA::UnMemMapTexture(frame.cudaContext, frame.cudaTexture);
 }
 
 
-}
+};
+
+

@@ -1,13 +1,13 @@
 #pragma once
 
+
 #include <GL/glew.h>
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
 
 #include "CudaContext.hpp"
-#include "CudaMacros.hpp"
-#include "openGL/GlTexture2D.hpp"
-#include "ErrorCodes.hpp"
+#include "CrrtErrors.hpp"
+#include "GlTexture2D.hpp"
 
 /*
     Container to store all Cuda and OpenGL Texture Interop Resources
@@ -23,84 +23,168 @@ struct CudaTexture2D
     bool                  isMemMapped = false;
 };
 
-[[nodiscard]] CudaError RegisterTextureInterop(const CudaContext& cudaContext,
-    CudaTexture2D& cudaTexture, const GL::GlTexture2D& glTexture)
+
+// Forward Declarations
+[[nodiscard]] inline Errors UnMemMapTexture(const CudaContext& cudaContext, CudaTexture2D& cudaTexture);
+
+/*
+    Registering OpenGL textures and memory mapping to Cuda
+*/
+
+[[nodiscard]] inline Errors RegisterTextureInterop(
+    const CudaContext& cudaContext, 
+    CudaTexture2D& cudaTexture, 
+    const GL::GlTexture2D& glTexture)
 {
-    if (cudaTexture.textureResource) { return CudaError::cudaErrorInvalidResourceHandle; }
-    if (!glTexture.texture)          { return CudaError::cudaErrorInvalidValue;          }
+    Errors errors;
 
-    CUDA_CHECK_OR_RETURN(cudaSetDevice(cudaContext.cudaDevice));
-    CUDA_CHECK_OR_RETURN(cudaGraphicsGLRegisterImage(
-        &cudaTexture.textureResource, glTexture.texture, GL_TEXTURE_2D,
-        cudaGraphicsRegisterFlagsSurfaceLoadStore
-    ));
+    if (cudaTexture.textureResource) { 
+        errors |= ErrorCode::cudaTextureAlreadyRegistered; 
+    }
+    if (!glTexture.texture) { 
+        errors |= ErrorCode::cudaInvalidGlTexture;
+    }
+    if (errors) { 
+        return errors; 
+    }
 
-    cudaTexture.textureDesc.resType = cudaResourceTypeArray;
-    return cudaSuccess;
+    if (cudaSetDevice(cudaContext.cudaDevice)) {
+        errors |= ErrorCode::cudaSetDeviceFailed;
+        return errors;
+    }
+    if (cudaGraphicsGLRegisterImage(
+        &cudaTexture.textureResource,
+        glTexture.texture,
+        GL_TEXTURE_2D,
+        cudaGraphicsRegisterFlagsSurfaceLoadStore))
+    {
+        errors |= ErrorCode::cudaTextureRegistrationFailed;
+        return errors;
+    }
+
+    return errors;
 }
 
-[[nodiscard]] CudaError UnregisterTextureInterop(const CudaContext& cudaContext,
-    CudaTexture2D& cudaTexture)
+[[nodiscard]] inline Errors UnregisterTextureInterop(const CudaContext& cudaContext, CudaTexture2D& cudaTexture)
 {
-    if (cudaTexture.isMemMapped || cudaTexture.surface) return cudaErrorInvalidResourceHandle;
-    if (!cudaTexture.textureResource) return cudaSuccess;
+    Errors errors;
 
-    CUDA_CHECK_OR_RETURN(cudaSetDevice(cudaContext.cudaDevice));
-    CUDA_CHECK_OR_RETURN(cudaGraphicsUnregisterResource(cudaTexture.textureResource));
+    if (!cudaTexture.textureResource) {
+        errors |= ErrorCode::cudaTextureNotRegistered;
+    }
+    if (cudaTexture.isMemMapped || cudaTexture.surface) {
+        errors |= ErrorCode::cudaTextureAlreadyMapped;
+    }
+    if (errors) {
+        return errors;
+    }
+
+    if (cudaSetDevice(cudaContext.cudaDevice)) {
+        errors |= ErrorCode::cudaSetDeviceFailed;
+        return errors;
+    }
+    if (cudaGraphicsUnregisterResource(cudaTexture.textureResource)) {
+        errors |= ErrorCode::cudaTextureUnregistrationFailed;
+        return errors;
+    }
 
     cudaTexture = {};
-    return cudaSuccess;
+    return errors;
 }
 
-[[nodiscard]] CudaError MemMapTexture(const CudaContext& cudaContext,
+[[nodiscard]] inline Errors MemMapTexture(const CudaContext& cudaContext,
     CudaTexture2D& cudaTexture)
 {
-    if (!cudaTexture.textureResource) return cudaErrorInvalidResourceHandle;
-    if (cudaTexture.isMemMapped || cudaTexture.surface) return cudaErrorInvalidResourceHandle;
+    Errors errors;
+    if (!cudaTexture.textureResource) { 
+        errors |= ErrorCode::cudaTextureNotRegistered; 
+    }
+    if (cudaTexture.isMemMapped || cudaTexture.surface) { 
+        errors |= ErrorCode::cudaTextureAlreadyMapped;
+    }
+    if (errors) { 
+        return errors; 
+    }
 
-    CUDA_CHECK_OR_RETURN(cudaSetDevice(cudaContext.cudaDevice));
-    CUDA_CHECK_OR_RETURN(cudaGraphicsMapResources(1, &cudaTexture.textureResource, 0));
+    if (cudaSetDevice(cudaContext.cudaDevice)) {
+        errors |= ErrorCode::cudaSetDeviceFailed;
+        return errors;
+    }
+    if (cudaGraphicsMapResources(1, &cudaTexture.textureResource, 0)) {
+        errors |= ErrorCode::cudaTextureMapFailed;
+        return errors;
+    }
     cudaTexture.isMemMapped = true;
-    cudaTexture.textureDesc.resType = cudaResourceTypeArray;
 
-    CUDA_CHECK_OR_RETURN(cudaGraphicsSubResourceGetMappedArray(
-        &cudaTexture.textureDesc.res.array.array, 
-        cudaTexture.textureResource, 
-        0, 
-        0
-    ));
-    CUDA_CHECK_OR_RETURN(cudaCreateSurfaceObject(
-        &cudaTexture.surface, 
-        &cudaTexture.textureDesc
-    ));
+    // We need a new surface object every frame according to Nividia
+    cudaTexture.textureDesc = {};
+    cudaResourceDesc textureDesc{};
+    textureDesc.resType = cudaResourceTypeArray;
+    cudaSurfaceObject_t surface = 0;
+    if (cudaGraphicsSubResourceGetMappedArray(
+        &textureDesc.res.array.array,
+        cudaTexture.textureResource,
+        0,
+        0)) 
+    {
+        errors |= ErrorCode::cudaMappedArrayQueryFailed;
+    } else if (cudaCreateSurfaceObject(
+        &surface,
+        &textureDesc)) 
+    {
+        errors |= ErrorCode::cudaSurfaceCreationFailed;
+    } else {
+        cudaTexture.textureDesc = textureDesc;
+        cudaTexture.surface = surface;
+    }
 
-    return cudaSuccess;
+    if (errors) {
+        errors |= UnMemMapTexture(cudaContext, cudaTexture);
+    }
+    return errors;
 }
 
-[[nodiscard]] CudaError UnMemMapTexture(const CudaContext& cudaContext,
+[[nodiscard]] inline Errors UnMemMapTexture(const CudaContext& cudaContext,
     CudaTexture2D& cudaTexture)
 {
-    if (!cudaTexture.isMemMapped && !cudaTexture.surface) return cudaSuccess;
+    Errors errors;
+    if (!cudaTexture.isMemMapped && !cudaTexture.surface) {
+        cudaTexture.textureDesc = {};
+        return errors;
+    }
 
-    CUDA_CHECK_OR_RETURN(cudaSetDevice(cudaContext.cudaDevice));
-    CUDA_CHECK_OR_RETURN(cudaDeviceSynchronize());
+    if (cudaSetDevice(cudaContext.cudaDevice)) {
+        errors |= ErrorCode::cudaSetDeviceFailed;
+        return errors;
+    }
+    if (cudaDeviceSynchronize()) {
+        errors |= ErrorCode::cudaDeviceSynchronizationFailed;
+    }
 
     if (cudaTexture.surface) {
-        CUDA_CHECK_OR_RETURN(cudaDestroySurfaceObject(cudaTexture.surface));
-        cudaTexture.surface = 0;
+        if (cudaDestroySurfaceObject(cudaTexture.surface)) {
+            errors |= ErrorCode::cudaSurfaceDestructionFailed;
+        } else {
+            cudaTexture.surface = 0;
+        }
     }
 
-    if (cudaTexture.isMemMapped) {
-        CUDA_CHECK_OR_RETURN(cudaGraphicsUnmapResources(
-            1, 
-            &cudaTexture.textureResource, 
-            0
-        ));
-        cudaTexture.isMemMapped = false;
+    if (cudaTexture.isMemMapped && !cudaTexture.surface) {
+        if (cudaGraphicsUnmapResources(
+            1,
+            &cudaTexture.textureResource,
+            0)) 
+        {
+            errors |= ErrorCode::cudaTextureUnmapFailed;
+        } else {
+            cudaTexture.isMemMapped = false;
+        }
     }
 
-    cudaTexture.textureDesc = {};
-    return cudaSuccess;
+    if (!cudaTexture.isMemMapped && !cudaTexture.surface) {
+        cudaTexture.textureDesc = {};
+    }
+    return errors;
 }
 
 }};

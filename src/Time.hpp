@@ -1,33 +1,44 @@
 #pragma once
 
-#include "../include/CRRT.hpp"
-
 #include <chrono>
 
-/*
-    Track Time and Expose it for the User
-    -> Make sure UpdateTime() is called every frame such that the DeltaTime between frames is set
-*/
+#include "Crrt.hpp"
 
 namespace CRRT {
 
+/*
+
+From: include/Crrt.hpp
+
+struct Time
+{
+    inline static double CurrentTime;
+    inline static double DeltaTime = 0.0f;
+};
+
+*/
+
+struct ClockContext
+{
+    inline static std::chrono::steady_clock::time_point startClockTime;
+    inline static std::chrono::steady_clock::time_point lastClockTime;
+};
+
 void StartTime()
 {
-    Time::Clock = std::chrono::steady_clock::now();
-    Time::CurrentTime = 0.0f;
-    Time::DeltaTime = 0.0f;
+    auto now = std::chrono::steady_clock::now();
+    ClockContext::startClockTime = now;
+    ClockContext::lastClockTime  = now;
+    Time::CurrentTime = 0.0;
+    Time::DeltaTime   = 0.0;
 }
 
 void UpdateTime()
 {
     auto clockNow = std::chrono::steady_clock::now();
-    
-    std::chrono::duration<float> deltaDuration = clockNow - Time::Clock;
-    Time::DeltaTime = deltaDuration.count();
-    Time::CurrentTime += Time::DeltaTime;
-
-    Time::Clock = clockNow;
-    
+    Time::DeltaTime   = std::chrono::duration<double>(clockNow - ClockContext::lastClockTime).count();
+    Time::CurrentTime = std::chrono::duration<double>(clockNow - ClockContext::startClockTime).count();
+    ClockContext::lastClockTime = clockNow;
+}
 }
 
-};

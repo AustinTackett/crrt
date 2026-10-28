@@ -1,4 +1,4 @@
-#include "../include/CRRT.hpp"
+#include "../include/Crrt.hpp"
 
 #include <surface_indirect_functions.h>
 

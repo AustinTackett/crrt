@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../include/CRRT.hpp"
+#include "../include/Crrt.hpp"
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -12,7 +12,6 @@
 
 namespace CRRT {
 
-/* Helper Functions */
 static inline void keyUp(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     Input::KEY_UP = action == GLFW_PRESS || action == GLFW_REPEAT;

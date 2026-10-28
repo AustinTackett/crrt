@@ -1,11 +1,12 @@
 #pragma once
 
+
 #include <GL/glew.h>
 #include <cuda_runtime.h>
 #include <cuda_gl_interop.h>
+#include <driver_types.h>
 
-#include "ErrorCodes.hpp"
-#include "CudaMacros.hpp"
+#include "CrrtErrors.hpp"
 
 /*
     Info on Cuda Device
@@ -20,25 +21,33 @@ struct CudaContext
     int cudaDevice = -1;
 };
 
-[[nodiscard]] CudaError FetchCudaContext(CudaContext& context) noexcept
+[[nodiscard]] inline Errors FetchCudaContext(CudaContext& context) noexcept
 {
     context = CudaContext{};
-
-    CUDA_CHECK_OR_RETURN(cudaGLGetDevices(
-        &context.cudaDeviceCount, 
-        &context.cudaDevice,
+    CudaContext candidate;
+    Errors errors;
+    
+    if (cudaGLGetDevices(
+        &candidate.cudaDeviceCount,
+        &candidate.cudaDevice,
         1,
-        cudaGLDeviceListAll
-    ));
-
-    if (context.cudaDeviceCount == 0) {
-        return CudaError::cudaErrorNoDevice;
+        cudaGLDeviceListAll))
+    {
+        errors |= ErrorCode::cudaDeviceQueryFailed;
+        return errors;
     }
-    CUDA_CHECK_OR_RETURN(cudaSetDevice(context.cudaDevice));
+    if (candidate.cudaDeviceCount == 0) {
+        errors |= ErrorCode::cudaNoCompatibleDevice;
+        return errors;
+    }
+    if(cudaSetDevice(candidate.cudaDevice)) {
+        errors |= ErrorCode::cudaSetDeviceFailed;
+        return errors;
+    }
 
-    return CudaError::cudaSuccess;
+    context = candidate;
+    return errors;
 }
-
 
 }};
 

@@ -1,10 +1,11 @@
 #pragma once
 
+
 #include <limits>
 
 #include <GL/glew.h>
 
-#include "ErrorCodes.hpp"
+#include "CrrtErrors.hpp"
 
 namespace CRRT { namespace GL {
 
@@ -14,8 +15,14 @@ namespace CRRT { namespace GL {
 
 static constexpr GLuint EMPTY_GL_TEXTURE = 0;
 
+struct GlTexture2D {
+    GLuint  texture = 0;
+    GLsizei width   = 0;
+    GLsizei height  = 0;
+};
+
 struct GlTextureDataFormat {
-    enum Format { 
+    enum Format {
         RGBA8
         //...
     };
@@ -34,22 +41,15 @@ struct GlTexture2DConfig
     GLenum wrapS        = GL_REPEAT;
     GLenum wrapT        = GL_REPEAT;
     GLenum compareMode  = GL_NONE;
-    GLenum compareFunc  = GL_LEQUAL; 
+    GLenum compareFunc  = GL_LEQUAL;
 };
 
-struct GlTexture2D {
-    GLuint  texture = EMPTY_GL_TEXTURE;
-    GLsizei width   = 0;
-    GLsizei height  = 0;
-
-    GlTextureDataFormat::Format format = GlTextureDataFormat::RGBA8;
-};
 
 /*
     Binding Texture as OpenGL Active Texture
 */
 
-void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
+inline void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
 {
     glActiveTexture(GL_TEXTURE0 + glTextureUnit);
     glBindTexture(GL_TEXTURE_2D, glTexture.texture);
@@ -59,46 +59,60 @@ void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
     Loading and Releasing Textures to Device
 */
 
-// Requires an empty output and a current GL context. On failure, release any
-// handle stored in glTexture with ReleaseTexture before reusing it.
-[[nodiscard]] GlError CreateEmptyTexture(GlTexture2D& glTexture, const GlTexture2DConfig& glConfig)
+[[nodiscard]] inline Errors CreateEmptyTexture(GlTexture2D& glTexture, const GlTexture2DConfig& glConfig)
 {
-    if (glTexture.texture) return GlError::textureAlreadyCreated;
+    Errors errors;
+    if (glTexture.texture) {
+        errors |= ErrorCode::glTextureAlreadyCreated;
+    }
 
-    auto isInvalidDimensions = [](int width, int height) -> bool {
+    auto isInvalidDimensions = [](size_t width, size_t height) -> bool {
         return width == 0 || height == 0 ||
                width  > static_cast<size_t>((std::numeric_limits<GLsizei>::max)()) ||
                height > static_cast<size_t>((std::numeric_limits<GLsizei>::max)());
     };
-    if (isInvalidDimensions(glConfig.width, glConfig.height)) { 
-        return GlError::textureInvalidDimensions; 
+    if (isInvalidDimensions(glConfig.width, glConfig.height)) {
+        errors |= ErrorCode::glTextureInvalidDimensions;
+    }
+    if (glConfig.format != GlTextureDataFormat::RGBA8) {
+        errors |= ErrorCode::glTextureUnsupportedFormat;
+    }
+    if (errors) {
+        return errors;
     }
 
-    glGenTextures(1, &glTexture.texture);
-    if (glTexture.texture == EMPTY_GL_TEXTURE) { return GlError::textureCreationFailed; }
+    GLuint newTexture = EMPTY_GL_TEXTURE;
+    glGenTextures(1, &newTexture);
+    if (newTexture == EMPTY_GL_TEXTURE) {
+        errors |= ErrorCode::glTextureCreationFailed;
+        return errors;
+    }
 
-    glBindTexture(GL_TEXTURE_2D, glTexture.texture);
+    glBindTexture(GL_TEXTURE_2D, newTexture);
 
     // Load As Correct format (only RGBA8 supported at this moment)
     switch(glConfig.format){
         case GL::GlTextureDataFormat::RGBA8: {
-            glTexImage2D(GL_TEXTURE_2D, 
-                0, 
-                GL_RGBA8, 
-                glConfig.width, 
-                glConfig.height, 
-                0, 
-                GL_RGBA, 
-                GL_UNSIGNED_BYTE, 
+            glTexImage2D(GL_TEXTURE_2D,
+                0,
+                GL_RGBA8,
+                glConfig.width,
+                glConfig.height,
+                0,
+                GL_RGBA,
+                GL_UNSIGNED_BYTE,
                 nullptr);
             break;
         }
         default:
         {
-            return GlError::textureUnsupportedFormat;
+            break; // Format was validated before allocating the texture.
         }
     }
-    
+    if (glGetError() != GL_NO_ERROR) {
+        errors |= ErrorCode::glTextureCreationFailed;
+    }
+
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, glConfig.minFiltering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, glConfig.maxFiltering);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, glConfig.wrapS);
@@ -108,16 +122,23 @@ void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
     if (glConfig.genMipmap) {
         glGenerateMipmap(GL_TEXTURE_2D);
     }
+    if (glGetError() != GL_NO_ERROR) {
+        errors |= ErrorCode::glTextureConfigurationFailed;
+    }
 
     glBindTexture(GL_TEXTURE_2D, 0);
+    if (errors) {
+        glDeleteTextures(1, &newTexture);
+        return errors;
+    }
 
+    glTexture.texture = newTexture;
     glTexture.width  = static_cast<GLsizei>(glConfig.width);
     glTexture.height = static_cast<GLsizei>(glConfig.height);
-    glTexture.format = glConfig.format;
-    return GlError::glSuccess;
+    return errors;
 }
 
-void ReleaseTexture(GlTexture2D& glTexture)
+inline void ReleaseTexture(GlTexture2D& glTexture)
 {
     if (!glTexture.texture) return;
 

@@ -1,23 +1,51 @@
 #pragma once
 
-#include <chrono>
 #include <functional>
 #include <string>
+#include <tuple>
 
-#include <surface_types.h>
-#include <vector_types.h>
+#include <cuda_runtime.h>
+
+#include "CrrtErrors.hpp"
+
+struct GLFWwindow;
 
 namespace CRRT {
 
-// Reading and writing to frame in cuda kernels
-struct FrameView {
-    cudaSurfaceObject_t surface;
-    int width;
-    int height;
+/*
+    Frame that stores pixels
+*/
+
+struct Frame;  
+
+struct FrameView
+{
+    cudaSurfaceObject_t surface = 0;
+    int width = 0;
+    int height = 0;
 };
 
-__device__ void  WriteFrame(FrameView frame, int x, int y, uchar4 color);
+/*
+    Functions for drawing to frame
+    -> Draw callback needs to be a function that takes FrameView as an arguement and returns void
+*/
+
+using DrawCallback = std::function<void(FrameView)>;
+__device__ void WriteFrame(FrameView frame, int x, int y, uchar4 color);
 __device__ uchar4 ReadFrame(FrameView frame, int x, int y);
+
+/*
+    Window Start up configuration
+*/
+
+struct Window
+{
+    GLFWwindow* window = nullptr;
+    Frame*      frame  = nullptr;
+
+    bool cursorVisible = true;
+    bool clearColor = true;
+};
 
 struct WindowConfig
 {
@@ -34,15 +62,30 @@ struct WindowConfig
     bool cursorVisible = true;
 };
 
+[[nodiscard]] Errors CreateWindow(Window& window, const WindowConfig& windowConfig);
+[[nodiscard]] Errors UpdateWindow(Window& window, DrawCallback drawCallback = nullptr);
+[[nodiscard]] Errors ReleaseWindow(Window& window);
+
+std::tuple<double, double> GetCursorPosition(Window& window);
+std::tuple<int, int> GetSize(Window& window);
+void SwapBuffer(Window& window);
+bool ShouldClose(Window& window);
+void SetShouldClose(Window& window);
+void CursorVisibility(Window& window, bool isVisible);
+
+/*
+    Tracking time
+*/
+
 struct Time
 {
-    inline static std::chrono::steady_clock::time_point Clock;
-    inline static float CurrentTime;
-    inline static float DeltaTime = 0.0f;
+    inline static double CurrentTime;
+    inline static double DeltaTime = 0.0f;
 };
 
-// Returns an empty string on success, or newline-separated error messages.
-std::string ExecuteRenderLoop(WindowConfig windowConfig, std::function<void(FrameView)> drawCallback);
+/*
+    Track what current inputs are being pressed
+*/
 
 struct Input
 {
@@ -110,4 +153,5 @@ struct Input
     inline static bool KEY_Z = false;
 };
 
-}
+
+};

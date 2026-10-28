@@ -1,18 +1,36 @@
-#include "DebugKernel.hpp"
 #include <cstdlib>
 #include <iostream>
 
+#include "DebugKernel.hpp"
+
 int main()
 {
-    CRRT::WindowConfig config;
-    config.name = "Debug Colors";
-    config.initWidth = config.resWidth = 1280;
-    config.initHeight = config.resHeight = 720;
+    // Window Configuration
+    CRRT::Window window;
+    CRRT::WindowConfig windowConfig;
+    windowConfig.name       = "Example Window Name";
+    windowConfig.initWidth  = windowConfig.resWidth = 1280;
+    windowConfig.initHeight = windowConfig.resHeight = 720;
 
-    const auto error = CRRT::ExecuteRenderLoop(config, RenderDebugColors);
-    if (!error.empty()) {
-        std::cerr << error << '\n';
+    // Loop untill error of requested to close
+    CRRT::Errors errors = CreateWindow(window, windowConfig);
+    while (!errors && !ShouldClose(window)) {  
+
+        // Run callback and give access to draw to back buffer
+        errors |= UpdateWindow(window, RenderDebugColors);
+
+        // Display back buffer
+        if (!errors) { 
+            SwapBuffer(window);
+        } 
     }
 
-    return error.empty() ? EXIT_SUCCESS : EXIT_FAILURE;
+    // Host (CPU) must free device resources (GPU), so we still grab any errors
+    errors |= ReleaseWindow(window);
+
+    // Log all the errors for the user
+    std::cout << GetErrorsString(errors);
+
+    return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
+

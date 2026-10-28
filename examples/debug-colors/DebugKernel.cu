@@ -26,4 +26,10 @@ void RenderDebugColors(CRRT::FrameView frame)
 
     dim3 blocks((frame.width + 15) / 16, (frame.height + 15) / 16);
     DebugColors<<<blocks, dim3(16, 16)>>>(frame, counter);
+    
+    cudaError_t error = cudaGetLastError();
+    if (error != cudaSuccess) {
+        throw std::runtime_error(cudaGetErrorString(error));
+    }
+
 }
