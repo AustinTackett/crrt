@@ -23,6 +23,13 @@ of that procedural style of programming.
 # Example usage
 
 ```Cpp
+#include <cstdlib>
+#include <iostream>
+
+/*
+    OpenGL and Cuda Interop can result in unrecoverable errors and should terminate the program
+*/
+
 void DrawCallback(CRRT::FrameView frame)
 {
     // Launch kernel containing WriteFrame(x, y, color) to write to individual pixels   
@@ -36,7 +43,7 @@ int main()
     windowConfig.initWidth  = windowConfig.resWidth  = 1920;
     windowConfig.initHeight = windowConfig.resHeight = 1080;
 
-    // Loop until error of requested to close
+    // Create GLFW window
     CRRT::Errors errors = CRRT::CreateWindow(windowConfig);
     if (errors) {
         std::cerr << GetErrorsString(errors);
