@@ -37,13 +37,12 @@ struct FrameView
 
 FrameView GetFrameView(const Frame& frame);
 [[nodiscard]] Errors ReleaseFrame(Frame& frame);
+[[nodiscard]] inline bool IsFrameAlive(const Frame& frame);
 
 [[nodiscard]] Errors CreateFrame(Frame& frame, int width, int height)
 {
     Errors errors;
-    if (frame.glVao.vao || frame.glTexture.texture || frame.glShader.shader ||
-        frame.cudaTexture.textureResource || frame.cudaTexture.isMemMapped || 
-        frame.cudaTexture.surface) 
+    if (IsFrameAlive(frame)) 
     {
         errors |= ErrorCode::frameAlreadyCreated;
     }
@@ -80,33 +79,34 @@ FrameView GetFrameView(const Frame& frame);
 {
     Errors errors;
 
-    if (frame.cudaTexture.isMemMapped || frame.cudaTexture.surface) {
+    // Destroy surface and unmap resource.
+    if (frame.cudaTexture.isMemMapped || frame.cudaTexture.surface)
+    {
         errors |= CUDA::UnMemMapTexture(
             frame.cudaContext,
             frame.cudaTexture
         );
+        if (errors) { return errors; } 
     }
 
-    if (frame.cudaTexture.textureResource &&
-        !frame.cudaTexture.isMemMapped &&
-        !frame.cudaTexture.surface)
+    // Unregister CUDA from the OpenGL texture.
+    if (frame.cudaTexture.textureResource)
     {
         errors |= CUDA::UnregisterTextureInterop(
             frame.cudaContext,
             frame.cudaTexture
         );
+
+        if (errors) { return errors; }
     }
 
-    if (!frame.cudaTexture.textureResource &&
-        !frame.cudaTexture.isMemMapped &&
-        !frame.cudaTexture.surface)
-    {
-        GL::ReleaseTexture(frame.glTexture);
-        frame.cudaContext = {};
-    }
-
+    // Release OpenGL Resources
+    GL::ReleaseTexture(frame.glTexture);
     GL::ReleaseShader(frame.glShader);
     GL::ReleaseVao(frame.glVao);
+
+    frame.cudaContext = {};
+
     return errors;
 }
 
@@ -130,6 +130,19 @@ void Draw(Frame& frame)
     return CUDA::UnMemMapTexture(frame.cudaContext, frame.cudaTexture);
 }
 
+
+[[nodiscard]] inline bool IsFrameAlive(const Frame& frame)
+{
+    // Check if frame has any lingering resources
+    return (
+        frame.cudaTexture.textureResource ||
+        frame.cudaTexture.isMemMapped ||
+        frame.cudaTexture.surface ||
+        frame.glTexture.texture ||
+        frame.glShader.shader ||
+        frame.glVao.vao
+    );
+}
 
 };
 

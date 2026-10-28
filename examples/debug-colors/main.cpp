@@ -6,32 +6,33 @@
 int main()
 {
     // Window Configuration
-    CRRT::Window window;
     CRRT::WindowConfig windowConfig;
     windowConfig.name       = "Example Window Name";
-    windowConfig.initWidth  = windowConfig.resWidth = 1280;
-    windowConfig.initHeight = windowConfig.resHeight = 720;
+    windowConfig.initWidth  = windowConfig.resWidth  = 1920;
+    windowConfig.initHeight = windowConfig.resHeight = 1080;
 
-    // Loop untill error of requested to close
-    CRRT::Errors errors = CreateWindow(window, windowConfig);
-    while (!errors && !ShouldClose(window)) {  
-
-        // Run callback and give access to draw to back buffer
-        errors |= UpdateWindow(window, RenderDebugColors);
-
-        // Display back buffer
-        if (!errors) { 
-            SwapBuffer(window);
-        } 
+    // Loop until error of requested to close
+    CRRT::Errors errors = CRRT::CreateWindow(windowConfig);
+    if (errors) {
+        std::cerr << GetErrorsString(errors);
+        return EXIT_FAILURE;
     }
 
-    // Host (CPU) must still free device resources (GPU), so we still grab any errors from that process.
-    // This is terminal and you should consider the window dead and no longer access any of its resources.
-    errors |= ReleaseWindow(window);
+    while (!CRRT::ShouldClose()) {  
 
-    // Log all the errors for the user
+        // Run callback and give access to draw to back buffer
+        errors |= CRRT::UpdateWindow(RenderDebugColors);
+        if (errors) {
+            std::cerr << GetErrorsString(errors);
+            return EXIT_FAILURE;
+        }
+
+        CRRT::SwapBuffer(); 
+    }
+
+    // If the host can't free device resources, errors can still occur
+    errors |= CRRT::ReleaseWindow();
     std::cout << GetErrorsString(errors);
-
     return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 

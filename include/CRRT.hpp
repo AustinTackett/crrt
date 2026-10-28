@@ -16,8 +16,6 @@ namespace CRRT {
     Frame that stores pixels
 */
 
-struct Frame;  
-
 struct FrameView
 {
     cudaSurfaceObject_t surface = 0;
@@ -31,21 +29,10 @@ struct FrameView
 */
 
 using DrawCallback = std::function<void(FrameView)>;
+
 __device__ void WriteFrame(FrameView frame, int x, int y, uchar4 color);
 __device__ uchar4 ReadFrame(FrameView frame, int x, int y);
 
-/*
-    Window Start up configuration
-*/
-
-struct Window
-{
-    GLFWwindow* window = nullptr;
-    Frame*      frame  = nullptr;
-
-    bool cursorVisible = true;
-    bool clearColor = true;
-};
 
 struct WindowConfig
 {
@@ -62,16 +49,16 @@ struct WindowConfig
     bool cursorVisible = true;
 };
 
-[[nodiscard]] Errors CreateWindow(Window& window, const WindowConfig& windowConfig);
-[[nodiscard]] Errors UpdateWindow(Window& window, DrawCallback drawCallback = nullptr);
-[[nodiscard]] Errors ReleaseWindow(Window& window);
+[[nodiscard]] Errors CreateWindow(const WindowConfig& windowConfig);
+[[nodiscard]] Errors UpdateWindow(DrawCallback drawCallback = nullptr);
+[[nodiscard]] Errors ReleaseWindow();
 
-std::tuple<double, double> GetCursorPosition(Window& window);
-std::tuple<int, int> GetSize(Window& window);
-void SwapBuffer(Window& window);
-bool ShouldClose(Window& window);
-void SetShouldClose(Window& window);
-void CursorVisibility(Window& window, bool isVisible);
+std::tuple<double, double> GetCursorPosition();
+std::tuple<int, int> GetSize();
+void SwapBuffer();
+bool ShouldClose();
+void SetShouldClose();
+void CursorVisibility(bool isVisible);
 
 /*
     Tracking time

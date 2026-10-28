@@ -37,11 +37,9 @@
       }
     },
     {
-      "name": "vs2022",
-      "generator": "Visual Studio 17 2022",
-      "binaryDir": "${sourceDir}/build/vs2022",
+      "name": "vs",
+      "binaryDir": "${sourceDir}/build/vs",
       "architecture": "x64",
-      "toolset": "cuda=13.0",
       "cacheVariables": {
         "CUDAToolkit_ROOT": "$penv{CUDA_PATH}",
         "CMAKE_CUDA_ARCHITECTURES": "native"
@@ -52,7 +50,7 @@
   "buildPresets": [
     { "name": "ninja-debug",   "configurePreset": "ninja-debug" },
     { "name": "ninja-release", "configurePreset": "ninja-release" },
-    { "name": "vs-debug",   "configurePreset": "vs2022", "configuration": "Debug" },
-    { "name": "vs-release", "configurePreset": "vs2022", "configuration": "Release" }
+    { "name": "vs-debug",   "configurePreset": "vs", "configuration": "Debug" },
+    { "name": "vs-release", "configurePreset": "vs", "configuration": "Release" }
   ]
 }

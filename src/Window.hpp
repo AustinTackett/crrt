@@ -37,15 +37,6 @@ constexpr GLFWwindow* EMPTY_WINDOW = nullptr;
 
 From: include/Crrt.hpp
 
-struct Window
-{
-    GLFWwindow* window = nullptr;
-    Frame*      frame  = nullptr;
-
-    bool cursorVisible = true;
-    bool clearColor = true;
-};
-
 struct WindowConfig
 {
     std::string name = "Window";
@@ -63,26 +54,35 @@ struct WindowConfig
 
 */
 
+struct Window
+{
+    static inline GLFWwindow* window = nullptr;
+    static inline Frame*      frame  = nullptr;
+
+    static inline bool cursorVisible = true;
+    static inline bool clearColor = true;
+};
+
 /*
     Creating Window and Releasing Window
 */
 
 // Forward Declarations
-[[nodiscard]] Errors ReleaseWindow(Window& window);
-static void AttachInputCallbacks(Window& window, KeyCallbackFn keyCallback, MouseButtonCallbackFn mouseButtonCallback);
-static void PollEvents(Window& window);
-void SwapBuffer(Window& window);
-bool ShouldClose(Window& window);
-void SetShouldClose(Window& window);
-void CursorVisibility(Window& window, bool isVisible);
-std::tuple<int, int>       GetSize(Window& window);
-std::tuple<double, double> GetCursorPosition(Window& window);
+[[nodiscard]] Errors ReleaseWindow();
+static void AttachInputCallbacks(KeyCallbackFn keyCallback, MouseButtonCallbackFn mouseButtonCallback);
+static void PollEvents();
+void SwapBuffer();
+bool ShouldClose();
+void SetShouldClose();
+void CursorVisibility(bool isVisible);
+std::tuple<int, int>       GetSize();
+std::tuple<double, double> GetCursorPosition();
 
 // Failed creation releases owned resources unless CUDA cleanup must be retried.
-[[nodiscard]] Errors CreateWindow(Window& window, const WindowConfig& windowConfig)
+[[nodiscard]] Errors CreateWindow(const WindowConfig& windowConfig)
 {
     Errors errors;
-    if (window.window || window.frame)
+    if (Window::window || Window::frame)
     {
         errors |= ErrorCode::windowsAlreadyCreated;
         return errors;
@@ -104,83 +104,89 @@ std::tuple<double, double> GetCursorPosition(Window& window);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     glfwWindowHint(GLFW_RESIZABLE, windowConfig.resizable ? GLFW_TRUE : GLFW_FALSE);
 
-    window.window = glfwCreateWindow(
+    Window::window = glfwCreateWindow(
         windowConfig.initWidth,
         windowConfig.initHeight,
         windowConfig.name.c_str(),
         nullptr,
         nullptr);
-    if (!window.window) {
+    if (!Window::window) {
         errors |= ErrorCode::windowsCreationFailed;
         glfwTerminate();
         return errors;
     }
     
-    glfwMakeContextCurrent(window.window);
-    if (glfwGetCurrentContext() != window.window) {
+    glfwMakeContextCurrent(Window::window);
+    if (glfwGetCurrentContext() != Window::window) {
         errors |= ErrorCode::windowsContextActivationFailed;
-        errors |= ReleaseWindow(window);
+        errors |= ReleaseWindow();
         return errors;
     }
 
     glewExperimental = GL_TRUE;
     if (glewInit() != GLEW_OK) {
         errors |= ErrorCode::windowsGlewInitializationFailed;
-        errors |= ReleaseWindow(window);
+        errors |= ReleaseWindow();
         return errors;
     }
 
-    window.frame = new (std::nothrow) Frame{};
-    if (!window.frame) {
+    Window::frame = new (std::nothrow) Frame{};
+    if (!Window::frame) {
         errors |= ErrorCode::windowsFrameOperationFailed;
-        errors |= ReleaseWindow(window);
+        errors |= ReleaseWindow();
         return errors;
     }
 
-    errors |= CreateFrame(*window.frame, windowConfig.resWidth, windowConfig.resHeight);
+    errors |= CreateFrame(*Window::frame, windowConfig.resWidth, windowConfig.resHeight);
     if (errors) {
         errors |= ErrorCode::windowsFrameOperationFailed;
-        errors |= ReleaseWindow(window);
+        errors |= ReleaseWindow();
         return errors;
     }
 
-    window.clearColor = windowConfig.clearColor;
-    glfwSwapInterval(windowConfig.vsync ? 1 : 0);
-    CursorVisibility(window, windowConfig.cursorVisible);
-    AttachInputCallbacks(window, KeyCallback, MouseButtonCallback);
+    Window::clearColor = windowConfig.clearColor;
+    glfwSwapInterval(windowConfig.vsync);
+    CursorVisibility(windowConfig.cursorVisible);
+    AttachInputCallbacks(KeyCallback, MouseButtonCallback);
     
-    PollEvents(window);
+    PollEvents();
     StartTime();
     return errors;
 }
 
-[[nodiscard]] Errors UpdateWindow(Window& window, DrawCallback drawCallback)
+[[nodiscard]] Errors UpdateWindow(DrawCallback drawCallback)
 {
     Errors errors;
-    if (!window.window || !window.frame) {
+    if (!Window::window || !Window::frame) {
         errors |= ErrorCode::windowsInvalidWindow;
         return errors;
     }
+    
+    if (glfwGetCurrentContext() != Window::window)
+    {
+        errors |= ErrorCode::windowsContextActivationFailed;
+        return errors;
+    }
 
-    PollEvents(window);
+    PollEvents();
     UpdateTime();
 
     int width = 0;
     int height = 0;
-    glfwGetFramebufferSize(window.window, &width, &height);;
+    glfwGetFramebufferSize(Window::window, &width, &height);;
     glViewport(0, 0, width, height);
 
-    if (window.clearColor) { 
+    if (Window::clearColor) { 
         glClear(GL_COLOR_BUFFER_BIT); 
     } 
 
     if (!drawCallback) {
-        Draw(*window.frame);
+        Draw(*Window::frame);
         return errors;
     }
 
     // Pass OpenGL texture to Cuda
-    errors |= BeginCudaAccess(*window.frame);
+    errors |= BeginCudaAccess(*Window::frame);
     if (errors) {
         errors |= ErrorCode::windowsFrameOperationFailed;
         return errors;
@@ -188,48 +194,60 @@ std::tuple<double, double> GetCursorPosition(Window& window);
 
     // Run user draw callback
     try {
-        drawCallback(GetFrameView(*window.frame));
+        drawCallback(GetFrameView(*Window::frame));
     } catch (...) {
         errors |= ErrorCode::windowDrawCallbackException;
         errors |= ErrorCode::userUncaughtException;
     }
 
     // Return Access of the texture to OpenGL
-    Errors cleanUpErrors = EndCudaAccess(*window.frame);
+    Errors cleanUpErrors = EndCudaAccess(*Window::frame);
     if (cleanUpErrors) { 
         errors |= cleanUpErrors | ErrorCode::windowsFrameCleanupFailed; 
     }
     
     // Draw texture to screen
     if (!errors) { 
-        Draw(*window.frame); 
+        Draw(*Window::frame); 
     }
 
     return errors;
 }
 
-[[nodiscard]] Errors ReleaseWindow(Window& window)
+[[nodiscard]] Errors ReleaseWindow()
 {
     Errors errors;
-    
-    // Clear Frame Data from OpenGL and Cuda
-    if (window.frame) {
-        if (window.window) {
-            Errors releaseErrors = ReleaseFrame(*window.frame);
-            if (releaseErrors) {
-                errors |= releaseErrors | ErrorCode::windowsFrameCleanupFailed;
-            }
-        }
-        delete window.frame;
-        window.frame = nullptr;
+    if (!Window::window && !Window::frame) {
+        return errors;
+    }
+    if (!Window::window) {
+        errors |= ErrorCode::windowsInvalidWindow;
+        return errors;
     }
 
-    // Clear GLFW window
-    if (window.window) {
-        glfwDestroyWindow(window.window);
-        window.window = EMPTY_WINDOW;
-        glfwTerminate();
+
+    if (glfwGetCurrentContext() != Window::window) {
+        glfwMakeContextCurrent(Window::window);
+        if (glfwGetCurrentContext() != Window::window) {
+            errors |= ErrorCode::windowsContextActivationFailed;
+            return errors;
+        }
     }
+
+    // Clear any frame data, but don't delete the frame reference if resources weren't cleared
+    if (Window::frame) {
+        errors |= ReleaseFrame(*Window::frame);
+        if (IsFrameAlive(*Window::frame)) {
+            errors |= ErrorCode::windowsFrameCleanupFailed;
+            return errors;
+        }
+        delete Window::frame;
+        Window::frame = nullptr;
+    }
+
+    glfwDestroyWindow(Window::window);
+    Window::window = nullptr;
+    glfwTerminate();
 
     return errors;
 }
@@ -238,18 +256,18 @@ std::tuple<double, double> GetCursorPosition(Window& window);
     Handling User IO 
 */
 
-static void AttachInputCallbacks(Window& window, KeyCallbackFn keyCallback, MouseButtonCallbackFn mouseButtonCallback)
+static void AttachInputCallbacks(KeyCallbackFn keyCallback, MouseButtonCallbackFn mouseButtonCallback)
 {
-    if (!window.window) { return; }
+    if (!Window::window) { return; }
 
-    glfwSetKeyCallback(window.window, keyCallback);
-    glfwSetMouseButtonCallback(window.window, mouseButtonCallback);
+    glfwSetKeyCallback(Window::window, keyCallback);
+    glfwSetMouseButtonCallback(Window::window, mouseButtonCallback);
 }
 
-static void PollEvents(Window& window)
+static void PollEvents()
 {
     glfwPollEvents();
-    auto [cursorX, cursorY] = GetCursorPosition(window);
+    auto [cursorX, cursorY] = GetCursorPosition();
     MouseUpdate(cursorX, cursorY);
 }
 
@@ -257,51 +275,51 @@ static void PollEvents(Window& window)
     Utilities 
 */
 
-void SwapBuffer(Window &window)
+void SwapBuffer()
 {
-    if (!window.window) { return; }
-    glfwSwapBuffers(window.window);
+    if (!Window::window) { return; }
+    glfwSwapBuffers(Window::window);
 }
 
-bool ShouldClose(Window& window)
+bool ShouldClose()
 {
-    if (!window.window) { return true; }
-    bool shouldClose = glfwWindowShouldClose(window.window);
+    if (!Window::window) { return true; }
+    bool shouldClose = glfwWindowShouldClose(Window::window);
     return shouldClose;
 }
 
-void SetShouldClose(Window& window)
+void SetShouldClose()
 {
-    if (!window.window) { return;}
-    glfwSetWindowShouldClose(window.window, true);
+    if (!Window::window) { return;}
+    glfwSetWindowShouldClose(Window::window, true);
 }
 
-std::tuple<double, double> GetCursorPosition(Window& window)
+std::tuple<double, double> GetCursorPosition()
 {
-    if (!window.window) { return std::tuple<double, double>(0.0, 0.0); }
+    if (!Window::window) { return std::tuple<double, double>(0.0, 0.0); }
     double x = 0.0, y = 0.0;
-    glfwGetCursorPos(window.window, &x, &y);
+    glfwGetCursorPos(Window::window, &x, &y);
     return std::tuple<double, double>(x, y);
 }
 
-std::tuple<int, int> GetSize(Window& window)
+std::tuple<int, int> GetSize()
 {
-    if (!window.window) { return std::tuple<int, int>(0, 0); }
+    if (!Window::window) { return std::tuple<int, int>(0, 0); }
     int width, height;
-    glfwGetWindowSize(window.window, &width, &height);
+    glfwGetWindowSize(Window::window, &width, &height);
     return std::tuple<int, int>(width, height);
 }
 
-void CursorVisibility(Window& window, bool isVisible)
+void CursorVisibility(bool isVisible)
 {
-    if (!window.window) { return; }
+    if (!Window::window) { return; }
     
     if(isVisible) {
-        glfwSetInputMode(window.window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
-        window.cursorVisible = true;
+        glfwSetInputMode(Window::window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+        Window::cursorVisible = true;
     } else {
-        glfwSetInputMode(window.window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
-        window.cursorVisible = false;
+        glfwSetInputMode(Window::window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+        Window::cursorVisible = false;
     }
 }
 

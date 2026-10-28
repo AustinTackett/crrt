@@ -109,6 +109,7 @@ struct CudaTexture2D
         return errors; 
     }
 
+    // Map OpenGL Texture Resource to Cuda
     if (cudaSetDevice(cudaContext.cudaDevice)) {
         errors |= ErrorCode::cudaSetDeviceFailed;
         return errors;
@@ -118,6 +119,7 @@ struct CudaTexture2D
         return errors;
     }
 
+    // Give Surface Object to let Cuda Access Texture 
     cudaTexture.isMemMapped = true;
     cudaArray_t array = nullptr;
     if (cudaGraphicsSubResourceGetMappedArray(
@@ -129,7 +131,6 @@ struct CudaTexture2D
         errors |= ErrorCode::cudaMappedArrayQueryFailed;
         return errors | UnMemMapTexture(cudaContext, cudaTexture);
     }
-
     cudaSurfaceObject_t surface = 0;
     cudaResourceDesc description{};
     description.resType = cudaResourceTypeArray;
@@ -146,40 +147,44 @@ struct CudaTexture2D
     return errors;
 }
 
-[[nodiscard]] inline Errors UnMemMapTexture(const CudaContext& cudaContext,
-    CudaTexture2D& cudaTexture)
+[[nodiscard]] inline Errors UnMemMapTexture(const CudaContext& context,CudaTexture2D& texture)
 {
     Errors errors;
-    if (!cudaTexture.isMemMapped && !cudaTexture.surface) {
+    if (!texture.isMemMapped && !texture.surface)
         return errors;
-    }
-
-    if (cudaSetDevice(cudaContext.cudaDevice)) {
+    if (cudaSetDevice(context.cudaDevice) != cudaSuccess) {
         errors |= ErrorCode::cudaSetDeviceFailed;
         return errors;
     }
+
+    // Ensure all previously submitted CUDA work completed
     if (cudaDeviceSynchronize()) {
         errors |= ErrorCode::cudaDeviceSynchronizationFailed;
+        return errors;
     }
 
-    if (cudaTexture.surface) {
-        if (cudaDestroySurfaceObject(cudaTexture.surface)) {
+    // Surface must be destroyed before unmapping
+    if (texture.surface) {
+        if (cudaDestroySurfaceObject(texture.surface)) {
             errors |= ErrorCode::cudaSurfaceDestructionFailed;
-        } else {
-            cudaTexture.surface = 0;
+            return errors;
         }
+
+        texture.surface = 0;
     }
 
-    if (cudaTexture.isMemMapped && !cudaTexture.surface) {
+    // Return the resource to OpenGL
+    if (texture.isMemMapped) {
         if (cudaGraphicsUnmapResources(
             1,
-            &cudaTexture.textureResource,
+            &texture.textureResource,
             0)) 
         {
             errors |= ErrorCode::cudaTextureUnmapFailed;
-        } else {
-            cudaTexture.isMemMapped = false;
+            return errors;
         }
+
+        texture.isMemMapped = false;
     }
 
     return errors;

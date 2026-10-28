@@ -1,30 +1,24 @@
 cmake_minimum_required(VERSION 3.28)
 include(FetchContent)
 
-project(SceneRayTracer LANGUAGES C CXX CUDA)
+project(CRRT LANGUAGES C CXX CUDA)
 
-# Build Options (by default build examples if we call from this cmake)
-option(CRRT_BUILD_EXAMPLES
-    "Build SceneRayTracer examples"
-    ${PROJECT_IS_TOP_LEVEL}
-)
-
-add_library(SceneRayTracer STATIC
+add_library(CRRT STATIC
     src/Window.cpp
     kernels/FrameOperations.cu
 )
-target_include_directories(SceneRayTracer
+target_include_directories(CRRT
     PUBLIC
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        "${CMAKE_CURRENT_SOURCE_DIR}/include"
     PRIVATE
         "${CMAKE_CURRENT_SOURCE_DIR}/src"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/cuda"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/openGL"
 )
-set_property(TARGET SceneRayTracer PROPERTY EXPORT_COMPILE_COMMANDS ON)
+set_property(TARGET CRRT PROPERTY EXPORT_COMPILE_COMMANDS ON)
 
 # CPP and CUDA Properties
-set_target_properties(SceneRayTracer PROPERTIES
+set_target_properties(CRRT PROPERTIES
     CXX_STANDARD 17
     CXX_STANDARD_REQUIRED ON
     CXX_EXTENSIONS OFF
@@ -33,7 +27,7 @@ set_target_properties(SceneRayTracer PROPERTIES
     CUDA_STANDARD_REQUIRED ON
     CUDA_ARCHITECTURES native
 )
-set_target_properties(SceneRayTracer PROPERTIES
+set_target_properties(CRRT PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
 
@@ -60,16 +54,9 @@ FetchContent_Declare(glfw
     GIT_SHALLOW TRUE)
 FetchContent_MakeAvailable(glew glfw)
 
-target_link_libraries(SceneRayTracer PUBLIC
+target_link_libraries(CRRT PUBLIC
     OpenGL::GL
     CUDA::cudart
     libglew_static
     glfw
 )
-
-# If you want to build examples, add the subdirectory
-option(CRRT_BUILD_EXAMPLES "Build SceneRayTracer examples" ${PROJECT_IS_TOP_LEVEL})
-if(CRRT_BUILD_EXAMPLES)
-    add_subdirectory(examples/debug-colors)
-endif()
-

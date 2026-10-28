@@ -2,57 +2,61 @@
 
 TLDR: Lets you write cuda kernels and render it to the screen 
 
-```Build Command
+Run these PowerShell commands from the repository root, using a Visual Studio generator.
 
-// Build Library
-cmake --preset vs2022 -DFETCHCONTENT_QUIET=OFF
-cmake --build --preset vs-debug --target SceneRayTracer
+# Building For Windows (Visual Studio)
+```powershell
+# Build library: .\build\vs\Release\CRRT.lib
+cmake --preset vs
+cmake --build --preset vs-release
 
-// Build Example
-cmake --build --preset vs-debug --target debug-colors
-.\build\vs2022\examples\debug-colors\Debug\debug-colors.exe
-
+# Build example: .\build\debug-colors-vs\Release\debug-colors.exe (builds library too)
+cmake -S examples/debug-colors -B build/debug-colors-vs
+cmake --build build/debug-colors-vs --config Release
 ```
 
 # Notes on coding style
-Been writing more c99 and having lots of fun so wanted to practice writing more procedural programs 
+For othe personal project, I have been writing lots of c99, so I wanted to write a project using more
+of that procedural style of programming.
 
 # Example usage
 
+```Cpp
 void DrawCallback(CRRT::FrameView frame)
 {
-    // launch kernel and use WriteFrame() write pixels data
-    
+    // Launch kernel containing WriteFrame(x, y, color) to write to individual pixels   
 }
 
 int main()
 {
     // Window Configuration
-    CRRT::Window window;
     CRRT::WindowConfig windowConfig;
     windowConfig.name       = "Example Window Name";
-    windowConfig.initWidth  = windowConfig.resWidth = 1280;
-    windowConfig.initHeight = windowConfig.resHeight = 720;
+    windowConfig.initWidth  = windowConfig.resWidth  = 1920;
+    windowConfig.initHeight = windowConfig.resHeight = 1080;
 
-    // Loop untill error of requested to close
-    CRRT::Errors errors = CreateWindow(window, windowConfig);
-    while (!errors && !ShouldClose(window)) {  
+    // Loop until error of requested to close
+    CRRT::Errors errors = CRRT::CreateWindow(windowConfig);
+    if (errors) {
+        std::cerr << GetErrorsString(errors);
+        return EXIT_FAILURE;
+    }
+
+    while (!CRRT::ShouldClose()) {  
 
         // Run callback and give access to draw to back buffer
-        errors |= UpdateWindow(window, DrawCallback);
+        errors |= CRRT::UpdateWindow(RenderDebugColors);
+        if (errors) {
+            std::cerr << GetErrorsString(errors);
+            return EXIT_FAILURE;
+        }
 
-        // Display back buffer
-        if (!errors) { 
-            SwapBuffer(window);
-        } 
+        CRRT::SwapBuffer(); 
     }
 
     // If the host can't free device resources, errors can still occur
-    errors |= ReleaseWindow(window);
-
-    // Log all the errors for the user
+    errors |= CRRT::ReleaseWindow();
     std::cout << GetErrorsString(errors);
-
     return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
-
+```
