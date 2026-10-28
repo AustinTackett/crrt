@@ -1,4 +1,0 @@
-# File Paths of Vertex and Fragment Shader to Render a 2D Texture to a Full Screen Triangle
-
-vertex_shader_path:   "src/openGL/GlShaders/GIRenderTexture2D.vert"
-fragment_shader_path: "src/openGL/GlShaders/GlRenderTexture2D.frag"
