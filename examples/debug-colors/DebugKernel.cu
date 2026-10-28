@@ -26,7 +26,7 @@ void RenderDebugColors(CRRT::FrameView frame)
     // It is ok to throw errors, the update window function catches them
     cudaError_t error = cudaGetLastError();
     if (error != cudaSuccess) {
-        std::cout << cudaGetErrorString(error);
+        std::cout << cudaGetErrorString(error) << "\n";
         throw std::runtime_error("My User Exception");
     }
 
