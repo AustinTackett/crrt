@@ -24,21 +24,9 @@ struct ClockContext
     inline static std::chrono::steady_clock::time_point lastClockTime;
 };
 
-void StartTime()
-{
-    auto now = std::chrono::steady_clock::now();
-    ClockContext::startClockTime = now;
-    ClockContext::lastClockTime  = now;
-    Time::CurrentTime = 0.0;
-    Time::DeltaTime   = 0.0;
-}
+void StartTime();
 
-void UpdateTime()
-{
-    auto clockNow = std::chrono::steady_clock::now();
-    Time::DeltaTime   = std::chrono::duration<double>(clockNow - ClockContext::lastClockTime).count();
-    Time::CurrentTime = std::chrono::duration<double>(clockNow - ClockContext::startClockTime).count();
-    ClockContext::lastClockTime = clockNow;
-}
+void UpdateTime();
+
 }
 

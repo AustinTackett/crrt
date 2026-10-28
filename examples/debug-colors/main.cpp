@@ -11,7 +11,7 @@ int main()
     windowConfig.initWidth  = windowConfig.resWidth  = 1920;
     windowConfig.initHeight = windowConfig.resHeight = 1080;
 
-    // Loop until error of requested to close
+    // Create GLFW window
     CRRT::Errors errors = CRRT::CreateWindow(windowConfig);
     if (errors) {
         std::cerr << GetErrorsString(errors);

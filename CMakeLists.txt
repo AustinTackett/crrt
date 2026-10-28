@@ -4,7 +4,16 @@ include(FetchContent)
 project(CRRT LANGUAGES C CXX CUDA)
 
 add_library(CRRT STATIC
+    src/CrrtErrors.cpp
+    src/Frame.cpp
+    src/Input.cpp
+    src/Time.cpp
     src/Window.cpp
+    src/cuda/CudaContext.cpp
+    src/cuda/CudaTexture2D.cpp
+    src/openGL/GlShader.cpp
+    src/openGL/GlTexture2D.cpp
+    src/openGL/GlVao.cpp
     kernels/FrameOperations.cu
 )
 target_include_directories(CRRT

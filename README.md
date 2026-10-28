@@ -1,6 +1,7 @@
-# README
+# CRRT: the "CUDA Rendering in Real Time" framework
 
-TLDR: Lets you write cuda kernels and render it to the screen 
+Uses Cuda and OpenGL interop to create a framework where you can write you own custom rendering pipeline
+in cuda and write it to the screen in real time.
 
 Run these PowerShell commands from the repository root, using a Visual Studio generator.
 

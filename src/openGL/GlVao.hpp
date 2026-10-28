@@ -1,11 +1,10 @@
 #pragma once
 
-
 #include <GL/glew.h>
 
 #include "CrrtErrors.hpp"
 
-namespace CRRT { namespace GL {
+namespace CRRT::GL {
 
 /*
     OpenGL Vertex Array
@@ -20,41 +19,12 @@ struct GlVao
     GLuint vao = 0;
 };
 
+void BindVao(GlVao& glVao);
 
-inline void BindVao(GlVao& glVao)
-{
-    glBindVertexArray(glVao.vao);
-}
+[[nodiscard]] Errors CreateVao(GlVao& glVao);
+void ReleaseVao(GlVao& glVao);
 
 // Uses the currently bound shader, textures, framebuffer, and viewport.
-inline void DrawVao(const GlVao& glVao, GLenum mode = GL_TRIANGLES, GLint first = 0, GLsizei count = 3)
-{
-    if (!glVao.vao) return;
+void DrawVao(const GlVao& glVao, GLenum mode = GL_TRIANGLES, GLint first = 0, GLsizei count = 3);
 
-    glBindVertexArray(glVao.vao);
-    glDrawArrays(mode, first, count);
 }
-
-[[nodiscard]] inline Errors CreateVao(GlVao& glVao)
-{
-    Errors errors;
-    if (glVao.vao) {
-        errors |= ErrorCode::glVaoAlreadyCreated;
-        return errors;
-    }
-    glGenVertexArrays(1, &glVao.vao);
-    if (glVao.vao == EMPTY_VAO) {
-        errors |= ErrorCode::glVaoCreationFailed;
-    }
-    return errors;
-}
-
-inline void ReleaseVao(GlVao& glVao)
-{
-    if (!glVao.vao) { return; }
-    
-    glDeleteVertexArrays(1, &glVao.vao);
-    glVao.vao = 0;
-}
-
-}};
