@@ -1,5 +1,5 @@
 #include "Input.hpp"
-#include "CrrtDeclarations.hpp"
+#include "Crrt.hpp"
 
 namespace CRRT {
 

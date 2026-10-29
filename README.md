@@ -26,12 +26,7 @@ of that procedural style of programming.
 #include <cstdlib>
 #include <iostream>
 
-/*
-    OpenGL and Cuda Interop can result in unrecoverable errors and should terminate the program
-    if an error is returned from CreateWindow, UpdateWindow, or ReleaseWindow
-*/
-
-'''
+/* Cuda Kernel Example
 __global__ void DrawToPixels(CRRT::FrameView frame, int color)
 {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -41,7 +36,7 @@ __global__ void DrawToPixels(CRRT::FrameView frame, int color)
     uchar4 rgba = make_uchar4(color, color, color, 255);
     CRRT::WriteFrame(frame, x, y, rgba);
 }
-'''
+*/
 
 void DrawCallback(CRRT::FrameView frame)
 {
@@ -49,6 +44,11 @@ void DrawCallback(CRRT::FrameView frame)
     DrawToPixels<<<gridDim, blockDim>>>(frame, color);
     // ... 
 }
+
+/*
+    OpenGL and Cuda Interop can result in unrecoverable errors and should terminate the program
+    if an error is returned from CreateWindow, UpdateWindow, or ReleaseWindow
+*/
 
 int main()
 {

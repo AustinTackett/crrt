@@ -1,5 +1,5 @@
 #include "Time.hpp"
-#include "CrrtDeclarations.hpp"
+#include "Crrt.hpp"
 
 namespace CRRT {
 

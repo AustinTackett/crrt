@@ -64,13 +64,34 @@ struct Errors {
     std::bitset<maxNumErrorCodes> errorCodes;
 
     // Operator overloading to use | to set flags
-    Errors& operator|=(const Errors& other);
-    Errors& operator|=(ErrorCode errorCode);
-    Errors operator|(const Errors& other) const;
-    Errors operator|(ErrorCode errorCode) const;
+    Errors& operator|=(const Errors& other)
+    {
+        errorCodes |= other.errorCodes;
+        return *this;
+    }
+    Errors& operator|=(ErrorCode errorCode)
+    {
+        errorCodes.set(static_cast<size_t>(errorCode));
+        return *this;
+    }
+    Errors operator|(const Errors& other) const
+    {
+        Errors result = *this;
+        result |= other;
+        return result;
+    }
+    Errors operator|(ErrorCode errorCode) const
+    {
+        Errors result = *this;
+        result |= errorCode;
+        return result;
+    }
     
     // if (errors) { execute when at least one error is set }
-    explicit operator bool() const noexcept;
+    explicit operator bool() const noexcept
+    {
+        return errorCodes.any();
+    }
 };
 
 void SetError(Errors& errors, ErrorCode errorCode);

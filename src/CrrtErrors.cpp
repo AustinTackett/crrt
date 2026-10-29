@@ -2,37 +2,6 @@
 
 namespace CRRT {
 
-Errors& Errors::operator|=(const Errors& other)
-{
-    errorCodes |= other.errorCodes;
-    return *this;
-}
-
-Errors& Errors::operator|=(ErrorCode errorCode)
-{
-    errorCodes.set(static_cast<size_t>(errorCode));
-    return *this;
-}
-
-Errors Errors::operator|(const Errors& other) const
-{
-    Errors result = *this;
-    result |= other;
-    return result;
-}
-
-Errors Errors::operator|(ErrorCode errorCode) const
-{
-    Errors result = *this;
-    result |= errorCode;
-    return result;
-}
-
-Errors::operator bool() const noexcept
-{
-    return errorCodes.any();
-}
-
 void SetError(Errors& errors, ErrorCode errorCode)
 {
     errors |= errorCode;
@@ -101,10 +70,10 @@ std::string GetErrorCodeString(ErrorCode errorCode)
         case ErrorCode::windowDrawCallbackException:              return "windowDrawCallbackException";
         case ErrorCode::userUncaughtException:                    return "userUncaughtException";
         case ErrorCode::frameAlreadyCreated:                      return "frameAlreadyCreated";
-        case ErrorCode::glTextureReleaseFailed: return "glTextureReleaseFailed";
-        case ErrorCode::glShaderReleaseFailed: return "glShaderReleaseFailed";
-        case ErrorCode::glVaoReleaseFailed: return "glVaoReleaseFailed";
-        case ErrorCode::windowDrawException: return "windowDrawException";
+        case ErrorCode::glTextureReleaseFailed:                   return "glTextureReleaseFailed";
+        case ErrorCode::glShaderReleaseFailed:                    return "glShaderReleaseFailed";
+        case ErrorCode::glVaoReleaseFailed:                       return "glVaoReleaseFailed";
+        case ErrorCode::windowDrawException:                      return "windowDrawException";
         default:                                                  return "Unknown error code";
     }
 }
