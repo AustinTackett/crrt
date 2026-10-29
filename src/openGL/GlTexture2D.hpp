@@ -1,7 +1,5 @@
 #pragma once
 
-#include <limits>
-
 #include <GL/glew.h>
 
 #include "CrrtErrors.hpp"

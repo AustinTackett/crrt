@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include <cstdio>
 #include <unordered_map>
 
 #include <GL/glew.h>

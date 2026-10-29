@@ -3,9 +3,7 @@
 #include "../include/Crrt.hpp"
 
 #include <functional>
-#include <string>
 #include <tuple>
-#include <new>
 
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
@@ -13,8 +11,6 @@
 #include <cuda_gl_interop.h>
 
 #include "Frame.hpp"
-#include "Input.hpp"
-#include "Time.hpp"
 
 /*
     Functions for Opening, Closing, and Modifying a GLFW Window

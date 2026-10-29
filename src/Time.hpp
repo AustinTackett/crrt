@@ -2,8 +2,6 @@
 
 #include <chrono>
 
-#include "Crrt.hpp"
-
 namespace CRRT {
 
 /*
