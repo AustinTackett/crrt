@@ -1,5 +1,9 @@
 #include "CudaContext.hpp"
 
+// GLEW must precede the OpenGL headers included by CUDA interop.
+#include <GL/glew.h>
+#include <cuda_gl_interop.h>
+
 namespace CRRT::CUDA {
 
 [[nodiscard]] Errors FetchCudaContext(CudaContext& context) noexcept
@@ -19,10 +23,6 @@ namespace CRRT::CUDA {
     }
     if (candidate.cudaDeviceCount == 0) {
         errors |= ErrorCode::cudaNoCompatibleDevice;
-        return errors;
-    }
-    if(cudaSetDevice(candidate.cudaDevice)) {
-        errors |= ErrorCode::cudaSetDeviceFailed;
         return errors;
     }
 

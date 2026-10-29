@@ -1,5 +1,7 @@
 #include "CudaTexture2D.hpp"
 
+#include <cuda_gl_interop.h>
+
 namespace CRRT::CUDA {
 
 [[nodiscard]] Errors RegisterTextureInterop(
@@ -48,7 +50,7 @@ namespace CRRT::CUDA {
         errors |= ErrorCode::cudaTextureNotRegistered;
     }
     if (cudaTexture.isMemMapped || cudaTexture.surface) {
-        errors |= ErrorCode::cudaTextureAlreadyMapped;
+        errors |= ErrorCode::cudaTextureUnRegisterMappedSurface;
     }
     if (errors) {
         return errors;
@@ -58,6 +60,7 @@ namespace CRRT::CUDA {
         errors |= ErrorCode::cudaSetDeviceFailed;
         return errors;
     }
+
     if (cudaGraphicsUnregisterResource(cudaTexture.textureResource)) {
         errors |= ErrorCode::cudaTextureUnregistrationFailed;
         return errors;
@@ -91,7 +94,7 @@ namespace CRRT::CUDA {
         return errors;
     }
 
-    // Give Surface Object to let Cuda Access Texture 
+    // Get OpenGL Texture as Cuda Array
     cudaTexture.isMemMapped = true;
     cudaArray_t array = nullptr;
     if (cudaGraphicsSubResourceGetMappedArray(
@@ -103,6 +106,8 @@ namespace CRRT::CUDA {
         errors |= ErrorCode::cudaMappedArrayQueryFailed;
         return errors | UnMemMapTexture(cudaContext, cudaTexture);
     }
+
+    // Create Surface For Cuda to Modify Array
     cudaSurfaceObject_t surface = 0;
     cudaResourceDesc description{};
     description.resType = cudaResourceTypeArray;
@@ -122,8 +127,10 @@ namespace CRRT::CUDA {
 [[nodiscard]] Errors UnMemMapTexture(const CudaContext& context,CudaTexture2D& texture)
 {
     Errors errors;
-    if (!texture.isMemMapped && !texture.surface)
+    if (!texture.isMemMapped && !texture.surface) {
         return errors;
+    }
+
     if (cudaSetDevice(context.cudaDevice) != cudaSuccess) {
         errors |= ErrorCode::cudaSetDeviceFailed;
         return errors;
@@ -135,17 +142,16 @@ namespace CRRT::CUDA {
         return errors;
     }
 
-    // Surface must be destroyed before unmapping
+    // If There is a Surface Destroy It
     if (texture.surface) {
         if (cudaDestroySurfaceObject(texture.surface)) {
             errors |= ErrorCode::cudaSurfaceDestructionFailed;
             return errors;
         }
-
         texture.surface = 0;
     }
 
-    // Return the resource to OpenGL
+    // If It is Mem-Mapped then Un-Mem-Map it
     if (texture.isMemMapped) {
         if (cudaGraphicsUnmapResources(
             1,
@@ -155,7 +161,6 @@ namespace CRRT::CUDA {
             errors |= ErrorCode::cudaTextureUnmapFailed;
             return errors;
         }
-
         texture.isMemMapped = false;
     }
 

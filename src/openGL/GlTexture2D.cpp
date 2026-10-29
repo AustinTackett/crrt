@@ -15,6 +15,7 @@ void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
         errors |= ErrorCode::glTextureAlreadyCreated;
     }
 
+    // Check for valid parameters
     auto isInvalidDimensions = [](size_t width, size_t height) -> bool {
         return width == 0 || height == 0 ||
                width  > static_cast<size_t>((std::numeric_limits<GLsizei>::max)()) ||
@@ -23,13 +24,11 @@ void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
     if (isInvalidDimensions(glConfig.width, glConfig.height)) {
         errors |= ErrorCode::glTextureInvalidDimensions;
     }
-    if (glConfig.format != GlTextureDataFormat::RGBA8) {
-        errors |= ErrorCode::glTextureUnsupportedFormat;
-    }
     if (errors) {
         return errors;
     }
 
+    // Create empty texture
     GLuint newTexture = EMPTY_GL_TEXTURE;
     glGenTextures(1, &newTexture);
     if (newTexture == EMPTY_GL_TEXTURE) {
@@ -53,9 +52,12 @@ void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
                 nullptr);
             break;
         }
+        // .. Where other texture formats would be loaded
         default:
         {
-            break;
+            errors |= ErrorCode::glTextureUnsupportedFormat;
+            glDeleteTextures(1, &newTexture);
+            return errors;
         }
     }
     if (glGetError() != GL_NO_ERROR) {
@@ -82,8 +84,8 @@ void BindTexture(GlTexture2D glTexture, GLuint glTextureUnit)
     }
 
     glTexture.texture = newTexture;
-    glTexture.width  = static_cast<GLsizei>(glConfig.width);
-    glTexture.height = static_cast<GLsizei>(glConfig.height);
+    glTexture.width   = static_cast<GLsizei>(glConfig.width);
+    glTexture.height  = static_cast<GLsizei>(glConfig.height);
     return errors;
 }
 

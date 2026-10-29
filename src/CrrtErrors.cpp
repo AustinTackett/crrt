@@ -61,14 +61,11 @@ bool HasErrors(const Errors& errors)
 std::string GetErrorCodeString(ErrorCode errorCode)
 {
     switch (errorCode) {
-        case ErrorCode::glSuccess:                                return "glSuccess";
         case ErrorCode::glTextureAlreadyCreated:                  return "glTextureAlreadyCreated";
         case ErrorCode::glTextureInvalidDimensions:               return "glTextureInvalidDimensions";
         case ErrorCode::glTextureUnsupportedFormat:               return "glTextureUnsupportedFormat";
         case ErrorCode::glTextureCreationFailed:                  return "glTextureCreationFailed";
         case ErrorCode::glTextureConfigurationFailed:             return "glTextureConfigurationFailed";
-        case ErrorCode::glShaderVertexFileReadFailed:             return "glShaderVertexFileReadFailed";
-        case ErrorCode::glShaderFragmentFileReadFailed:           return "glShaderFragmentFileReadFailed";
         case ErrorCode::glShaderCreationFailed:                   return "glShaderCreationFailed";
         case ErrorCode::glShaderVertexCompilationFailed:          return "glShaderVertexCompilationFailed";
         case ErrorCode::glShaderFragmentCompilationFailed:        return "glShaderFragmentCompilationFailed";
@@ -84,6 +81,7 @@ std::string GetErrorCodeString(ErrorCode errorCode)
         case ErrorCode::cudaTextureNotRegistered:                 return "cudaTextureNotRegistered";
         case ErrorCode::cudaInvalidGlTexture:                     return "cudaInvalidGlTexture";
         case ErrorCode::cudaTextureAlreadyMapped:                 return "cudaTextureAlreadyMapped";
+        case ErrorCode::cudaTextureUnRegisterMappedSurface:       return "cudaTextureUnRegisterMappedSurface";
         case ErrorCode::cudaTextureRegistrationFailed:            return "cudaTextureRegistrationFailed";
         case ErrorCode::cudaTextureUnregistrationFailed:          return "cudaTextureUnregistrationFailed";
         case ErrorCode::cudaTextureMapFailed:                     return "cudaTextureMapFailed";
@@ -92,7 +90,6 @@ std::string GetErrorCodeString(ErrorCode errorCode)
         case ErrorCode::cudaDeviceSynchronizationFailed:          return "cudaDeviceSynchronizationFailed";
         case ErrorCode::cudaSurfaceDestructionFailed:             return "cudaSurfaceDestructionFailed";
         case ErrorCode::cudaTextureUnmapFailed:                   return "cudaTextureUnmapFailed";
-        case ErrorCode::windowsSuccess:                           return "windowsSuccess";
         case ErrorCode::windowsAlreadyCreated:                    return "windowsAlreadyCreated";
         case ErrorCode::windowsInvalidWindow:                     return "windowsInvalidWindow";
         case ErrorCode::windowsGlfwInitializationFailed:          return "windowsGlfwInitializationFailed";
@@ -104,8 +101,10 @@ std::string GetErrorCodeString(ErrorCode errorCode)
         case ErrorCode::windowDrawCallbackException:              return "windowDrawCallbackException";
         case ErrorCode::userUncaughtException:                    return "userUncaughtException";
         case ErrorCode::frameAlreadyCreated:                      return "frameAlreadyCreated";
-        case ErrorCode::frameConfigReadFailed:                    return "frameConfigReadFailed";
-        case ErrorCode::frameConfigInvalid:                       return "frameConfigInvalid";
+        case ErrorCode::glTextureReleaseFailed: return "glTextureReleaseFailed";
+        case ErrorCode::glShaderReleaseFailed: return "glShaderReleaseFailed";
+        case ErrorCode::glVaoReleaseFailed: return "glVaoReleaseFailed";
+        case ErrorCode::windowDrawException: return "windowDrawException";
         default:                                                  return "Unknown error code";
     }
 }

@@ -8,14 +8,11 @@ namespace CRRT {
 constexpr int maxNumErrorCodes = 64;
 enum class ErrorCode
 {
-    glSuccess = 0,
     glTextureAlreadyCreated,
     glTextureInvalidDimensions,
     glTextureUnsupportedFormat,
     glTextureCreationFailed,
     glTextureConfigurationFailed,
-    glShaderVertexFileReadFailed,
-    glShaderFragmentFileReadFailed,
     glShaderCreationFailed,
     glShaderVertexCompilationFailed,
     glShaderFragmentCompilationFailed,
@@ -39,7 +36,6 @@ enum class ErrorCode
     cudaDeviceSynchronizationFailed,
     cudaSurfaceDestructionFailed,
     cudaTextureUnmapFailed,
-    windowsSuccess,
     windowsAlreadyCreated,
     windowsInvalidWindow,
     windowsGlfwInitializationFailed,
@@ -51,8 +47,13 @@ enum class ErrorCode
     windowDrawCallbackException,
     userUncaughtException,
     frameAlreadyCreated,
-    frameConfigReadFailed,
-    frameConfigInvalid,
+
+    cudaTextureUnRegisterMappedSurface,
+
+    glTextureReleaseFailed,
+    glShaderReleaseFailed,
+    glVaoReleaseFailed,
+    windowDrawException,
 
     // Integer storing how many errors enums have been added
     ErrorCodeCount

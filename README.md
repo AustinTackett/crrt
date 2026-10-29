@@ -28,11 +28,26 @@ of that procedural style of programming.
 
 /*
     OpenGL and Cuda Interop can result in unrecoverable errors and should terminate the program
+    if an error is returned from CreateWindow, UpdateWindow, or ReleaseWindow
 */
+
+'''
+__global__ void DrawToPixels(CRRT::FrameView frame, int color)
+{
+    int x = blockIdx.x * blockDim.x + threadIdx.x;
+    int y = blockIdx.y * blockDim.y + threadIdx.y;
+    if (x >= frame.width || y >= frame.height) return;
+
+    uchar4 rgba = make_uchar4(color, color, color, 255);
+    CRRT::WriteFrame(frame, x, y, rgba);
+}
+'''
 
 void DrawCallback(CRRT::FrameView frame)
 {
-    // Launch kernel containing WriteFrame(x, y, color) to write to individual pixels   
+    // ...
+    DrawToPixels<<<gridDim, blockDim>>>(frame, color);
+    // ... 
 }
 
 int main()
