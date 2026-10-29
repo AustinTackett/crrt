@@ -18,15 +18,22 @@ int main()
         return EXIT_FAILURE;
     }
 
+    // Draw Callback: This runs every frame and should contain your cuda kernel
+    auto drawBackCall = [&] (CRRT::FrameView frame) {
+        RenderDebugColors(frame);
+        // ...
+    };
+
     while (!CRRT::ShouldClose()) {  
 
         // Run callback and give access to draw to back buffer
-        errors |= CRRT::UpdateWindow(RenderDebugColors);
+        errors |= CRRT::UpdateWindow(drawBackCall);
         if (errors) {
             std::cerr << GetErrorsString(errors);
             return EXIT_FAILURE;
         }
 
+        // Display what was drawn
         CRRT::SwapBuffer(); 
     }
 
