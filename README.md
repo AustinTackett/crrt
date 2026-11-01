@@ -16,17 +16,10 @@ cmake -S examples/debug-colors -B build/debug-colors-vs
 cmake --build build/debug-colors-vs --config Release
 ```
 
-# Notes on coding style
-For othe personal project, I have been writing lots of c99, so I wanted to write a project using more
-of that procedural style of programming.
+# Usage
 
-# Example usage
-
+## Example Cuda Kernel 
 ```Cpp
-#include <cstdlib>
-#include <iostream>
-
-/* Cuda Kernel Example
 __global__ void DrawToPixels(CRRT::FrameView frame, int color)
 {
     int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -36,6 +29,16 @@ __global__ void DrawToPixels(CRRT::FrameView frame, int color)
     uchar4 rgba = make_uchar4(color, color, color, 255);
     CRRT::WriteFrame(frame, x, y, rgba);
 }
+```
+
+## Using Cuda Kernel to Draw to Window in Real Time
+```Cpp
+#include <cstdlib>
+#include <iostream>
+
+/*
+    OpenGL and Cuda Interop can result in unrecoverable errors and should terminate the program
+    if an error is returned from CreateWindow, UpdateWindow, or ReleaseWindow
 */
 
 void DrawCallback(CRRT::FrameView frame)
@@ -44,11 +47,6 @@ void DrawCallback(CRRT::FrameView frame)
     DrawToPixels<<<gridDim, blockDim>>>(frame, color);
     // ... 
 }
-
-/*
-    OpenGL and Cuda Interop can result in unrecoverable errors and should terminate the program
-    if an error is returned from CreateWindow, UpdateWindow, or ReleaseWindow
-*/
 
 int main()
 {
@@ -83,3 +81,6 @@ int main()
     return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 ```
+## Notes on coding style
+For othe personal project, I have been writing lots of c99, so I wanted to write a project using more
+of that procedural style of programming.
