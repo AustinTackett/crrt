@@ -30,9 +30,25 @@ struct FrameView
 
 using DrawCallback = std::function<void(FrameView)>;
 
-__device__ void   WriteFrame(FrameView frame, int x, int y, uchar4 color);
-__device__ uchar4 ReadFrame(FrameView frame, int x, int y);
+// Linear RGB access
+__device__ void WriteFrameRgb(FrameView frame, int x, int y, float4 color);
+__device__ float4 ReadFrameRgb(FrameView frame, int x, int y);
+__device__ float4 ReadFrameRgbOrZero(FrameView frame, int x, int y);
 
+// sRGB access
+__device__ void WriteFrameSrgb( FrameView frame, int x, int y, float4 color);
+__device__ float4 ReadFrameSrgb(FrameView frame, int x, int y);
+__device__ float4 ReadFrameSrgbOrZero(FrameView frame, int x, int y);
+
+// Raw RGBA8 access
+__device__ void WriteFrameRaw(FrameView frame, int x, int y, uchar4 color);
+__device__ uchar4 ReadFrameRaw(FrameView frame, int x, int y);
+__device__ uchar4 ReadFrameRawOrZero(FrameView frame, int x, int y);
+
+
+/*
+    Creating and Adjusting Window
+*/
 
 struct WindowConfig
 {
@@ -67,8 +83,8 @@ void CursorVisibility(bool isVisible);
 struct Time
 {
     // Seconds
-    inline static double CurrentTime;
-    inline static double DeltaTime = 0.0f;
+    inline static double CurrentTime = 0.0;
+    inline static double DeltaTime   = 0.0;
 };
 
 /*
@@ -78,13 +94,13 @@ struct Time
 struct Input
 {
     // Special Keys
-    inline static bool KEY_ESCAPE         = false;
-    inline static bool KEY_ENTER          = false;
-    inline static bool KEY_TAB            = false;
-    inline static bool KEY_CONTROL        = false;
-    inline static bool KEY_SPACE          = false;
-    inline static bool KEY_SHIFT          = false;
-    inline static bool KEY_ALT            = false;
+    inline static bool KEY_ESCAPE  = false;
+    inline static bool KEY_ENTER   = false;
+    inline static bool KEY_TAB     = false;
+    inline static bool KEY_CONTROL = false;
+    inline static bool KEY_SPACE   = false;
+    inline static bool KEY_SHIFT   = false;
+    inline static bool KEY_ALT     = false;
     
     // Arrow Keys
     inline static bool KEY_UP    = false;

@@ -68,7 +68,7 @@ namespace CRRT {
         Window::glShader.shader ||
         Window::glVao.vao) 
     {
-        errors |= ErrorCode::frameAlreadyCreated;
+        errors |= ErrorCode::glTextureAlreadyCreated;
         errors |= ReleaseWindow();
         return errors;
     }

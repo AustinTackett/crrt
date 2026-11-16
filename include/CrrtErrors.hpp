@@ -21,6 +21,9 @@ enum class ErrorCode
     glShaderAlreadyCreated,
     glVaoCreationFailed,
     glVaoAlreadyCreated,
+    glTextureReleaseFailed,
+    glShaderReleaseFailed,
+    glVaoReleaseFailed,
     cudaDeviceQueryFailed,
     cudaNoCompatibleDevice,
     cudaSetDeviceFailed,
@@ -36,6 +39,8 @@ enum class ErrorCode
     cudaDeviceSynchronizationFailed,
     cudaSurfaceDestructionFailed,
     cudaTextureUnmapFailed,
+    cudaTextureUnRegisterMappedSurface,
+    cudaHostAllocationFailed,
     windowsAlreadyCreated,
     windowsInvalidWindow,
     windowsGlfwInitializationFailed,
@@ -45,15 +50,8 @@ enum class ErrorCode
     windowsFrameOperationFailed,
     windowsFrameCleanupFailed,
     windowDrawCallbackException,
-    userUncaughtException,
-    frameAlreadyCreated,
-
-    cudaTextureUnRegisterMappedSurface,
-
-    glTextureReleaseFailed,
-    glShaderReleaseFailed,
-    glVaoReleaseFailed,
     windowDrawException,
+    userUncaughtException,
 
     // Integer storing how many errors enums have been added
     ErrorCodeCount

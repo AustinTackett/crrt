@@ -23,8 +23,7 @@ struct CudaTexture2D
     Registering OpenGL textures and memory mapping to Cuda
 */
 
-[[nodiscard]] Errors RegisterTextureInterop(const CudaContext& cudaContext, 
-    CudaTexture2D& cudaTexture, const GL::GlTexture2D& glTexture);
+[[nodiscard]] Errors RegisterTextureInterop(const CudaContext& cudaContext, CudaTexture2D& cudaTexture, const GL::GlTexture2D& glTexture);
 [[nodiscard]] Errors UnregisterTextureInterop(const CudaContext& cudaContext, CudaTexture2D& cudaTexture);
 
 [[nodiscard]] Errors MemMapTexture(const CudaContext& cudaContext,  CudaTexture2D& cudaTexture);

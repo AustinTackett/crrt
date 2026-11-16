@@ -33,8 +33,11 @@ set_target_properties(CRRT PROPERTIES
 
     CUDA_STANDARD 17
     CUDA_STANDARD_REQUIRED ON
-    CUDA_ARCHITECTURES native
 )
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES all-major)
+endif()
+
 set_target_properties(CRRT PROPERTIES
     CUDA_SEPARABLE_COMPILATION ON
     CUDA_RESOLVE_DEVICE_SYMBOLS OFF)
@@ -56,6 +59,9 @@ FetchContent_Declare(glew
     GIT_REPOSITORY https://github.com/Perlmint/glew-cmake.git
     GIT_TAG glew-cmake-2.3.1
     GIT_SHALLOW TRUE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(glfw
     GIT_REPOSITORY https://github.com/glfw/glfw.git
     GIT_TAG 3.4

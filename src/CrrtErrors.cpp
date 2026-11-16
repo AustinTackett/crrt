@@ -69,11 +69,11 @@ std::string GetErrorCodeString(ErrorCode errorCode)
         case ErrorCode::windowsFrameCleanupFailed:                return "windowsFrameCleanupFailed";
         case ErrorCode::windowDrawCallbackException:              return "windowDrawCallbackException";
         case ErrorCode::userUncaughtException:                    return "userUncaughtException";
-        case ErrorCode::frameAlreadyCreated:                      return "frameAlreadyCreated";
         case ErrorCode::glTextureReleaseFailed:                   return "glTextureReleaseFailed";
         case ErrorCode::glShaderReleaseFailed:                    return "glShaderReleaseFailed";
         case ErrorCode::glVaoReleaseFailed:                       return "glVaoReleaseFailed";
         case ErrorCode::windowDrawException:                      return "windowDrawException";
+        case ErrorCode::cudaHostAllocationFailed:                 return "cudaHostAllocationFailed";
         default:                                                  return "Unknown error code";
     }
 }

@@ -19,6 +19,8 @@ target_link_libraries(debug-colors PRIVATE CRRT)
 target_compile_features(debug-colors PRIVATE cxx_std_17 cuda_std_17)
 
 set_target_properties(debug-colors PROPERTIES
-    CUDA_ARCHITECTURES native
     CUDA_SEPARABLE_COMPILATION ON
 )
+if(NOT DEFINED CMAKE_CUDA_ARCHITECTURES)
+    set(CMAKE_CUDA_ARCHITECTURES all-major)
+endif()
