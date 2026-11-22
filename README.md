@@ -1,37 +1,15 @@
 # CRRT: the "CUDA Rendering in Real Time" framework
 
 Uses Cuda and OpenGL interop to create a framework where you can write you own custom rendering pipeline
-in cuda and write it to the screen in real time.
+in Cuda and write it to the screen in real time.
 
-Run these PowerShell commands from the repository root, using a Visual Studio generator.
+See minimal example at: "examples/debug-colors"
 
-# Building For Windows (Visual Studio)
-
-Make sure you are in a Visual Studio environment for compiling Cuda or set the path variables manually
-```powershell
-# Visual Studio 2022 Example
-call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64
-```
-
-```powershell
-# Build library: .\build\vs\Release\CRRT.lib
-cmake --preset vs
-cmake --build --preset vs-release
-
-# Build with example: .\build\debug-colors-vs\Release\debug-colors.exe
-cmake -S examples/debug-colors -B build/debug-colors-vs
-cmake --build build/debug-colors-vs --config Release
-```
-
-# Building For Other Platforms
-I only have cuda comptatible devices on my windows computer, so I have not tested the application outside of windows.
-
-# Note on Cuda Devices
-At the moment I am fetching the first listed CUDA compatible device automatically. I will eventually swap that to be either an argument to the "CreateWindow()" function or automate it by looking at each cuda device properties in "src/CudaContext.cpp".
+Or complete project at: https://github.com/AustinTackett/cuda-voxel-raymarcher
 
 # Usage
 
-## Example Cuda Kernel 
+### Example Cuda Kernel 
 ```Cpp
 __global__ void DrawToPixels(CRRT::FrameView frame, float color)
 {
@@ -48,7 +26,7 @@ __global__ void DrawToPixels(CRRT::FrameView frame, float color)
 
 OpenGL and Cuda Interop can result in unrecoverable (sticky) hardware level errors. So if there is an error its generally advisable to terminate. When the Crrt public functions return an error, the resources are also unmapped/released to avoid deadlocking. 
 
-## Using Cuda Kernel to Draw to Window in Real Time
+### Using Cuda Kernel to Draw to Window in Real Time
 ```Cpp
 #include <cstdlib>
 #include <iostream>
@@ -101,6 +79,32 @@ int main()
 Displays slowly changing colors to illustrate the concept of cuda writing color data to window in real time.
 
 ![DebugColorsExample](./examples/images/debug-colors.png)
+
+Run these PowerShell commands from the repository root, using a Visual Studio generator.
+
+# Building For Windows (Visual Studio)
+
+Make sure you are in a Visual Studio environment for compiling Cuda or set the path variables manually
+```powershell
+# Visual Studio 2022 Example
+call "C:\Program Files\Microsoft Visual Studio\2022\Community\Common7\Tools\VsDevCmd.bat" -arch=x64 -host_arch=x64
+```
+
+```powershell
+# Build library: .\build\vs\Release\CRRT.lib
+cmake --preset vs
+cmake --build --preset vs-release
+
+# Build with example: .\build\debug-colors-vs\Release\debug-colors.exe
+cmake -S examples/debug-colors -B build/debug-colors-vs
+cmake --build build/debug-colors-vs --config Release
+```
+
+# Building For Other Platforms
+I only have cuda comptatible devices on my windows computer, so I have not tested the application outside of windows.
+
+# Notes on Cuda Devices
+At the moment I am fetching the first listed CUDA compatible device automatically. I will eventually swap that to be either an argument to the "CreateWindow()" function or automate it by looking at each cuda device properties in "src/CudaContext.cpp".
 
 ## Notes on coding style
 For other personal projects, I have been writing lots of c99, so I wanted to write a fun personal project inspired by a procedural style like you would see in older c-api's. Although its hard to ignore c++ features like pasing by reference, the Standard Template Library, and namespaces.
