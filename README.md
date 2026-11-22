@@ -27,7 +27,7 @@ cmake --build build/debug-colors-vs --config Release
 I only have cuda comptatible devices on my windows computer, so I have not tested the application outside of windows.
 
 # Note on Cuda Devices
-At the moment I am fetching the first listed CUDA compatible device automatically. I will eventually swap that to be either an arguement to the create window function or automate it by looking at each cuda device properties.
+At the moment I am fetching the first listed CUDA compatible device automatically. I will eventually swap that to be either an argument to the "CreateWindow()" function or automate it by looking at each cuda device properties in "src/CudaContext.cpp".
 
 # Usage
 
