@@ -74,7 +74,7 @@ int main()
     return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 ```
-## Example: "examples/debug-colors/..."
+# Example: "examples/debug-colors/..."
 
 Displays slowly changing colors to illustrate the concept of cuda writing color data to window in real time.
 
@@ -100,10 +100,10 @@ cmake -S examples/debug-colors -B build/debug-colors-vs
 cmake --build build/debug-colors-vs --config Release
 ```
 
-# Building For Other Platforms
+## Building For Other Platforms
 I only have cuda comptatible devices on my windows computer, so I have not tested the application outside of windows.
 
-# Notes on Cuda Devices
+## Notes on Cuda Devices
 At the moment I am fetching the first listed CUDA compatible device automatically. I will eventually swap that to be either an argument to the "CreateWindow()" function or automate it by looking at each cuda device properties in "src/CudaContext.cpp".
 
 ## Notes on coding style
