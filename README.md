@@ -96,9 +96,9 @@ int main()
     return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 ```
-## Examples
+## Example: "examples/debug-colors/..."
 
-Generated from, "examples/debug-colors": displays slowly changing colors to illustrate the concept of cuda writing color data to window in real time.
+Displays slowly changing colors to illustrate the concept of cuda writing color data to window in real time.
 
 ![DebugColorsExample](./examples/images/debug-colors.png)
 
