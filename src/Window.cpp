@@ -292,6 +292,18 @@ void SwapBuffer()
     glfwSwapBuffers(Window::window);
 }
 
+void ShowWindow()
+{
+    if (!Window::window) { return; }
+    glfwShowWindow(Window::window);
+}
+
+void HideWindow()
+{
+    if (!Window::window) { return; }
+    glfwHideWindow(Window::window);
+}
+
 bool ShouldClose()
 {
     if (!Window::window) { return true; }

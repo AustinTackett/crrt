@@ -75,6 +75,8 @@ void SwapBuffer();
 bool ShouldClose();
 void SetShouldClose();
 void CursorVisibility(bool isVisible);
+void ShowWindow();
+void HideWindow();
 
 /*
     Tracking time
