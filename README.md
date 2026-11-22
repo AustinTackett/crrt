@@ -96,5 +96,11 @@ int main()
     return errors ? EXIT_FAILURE : EXIT_SUCCESS;
 }
 ```
+## Examples
+
+Generated from, "examples/debug-colors": displays slowly changing colors to illustrate the concept of cuda writing color data to window in real time.
+
+![DebugColorsExample](./examples/images/debug-colors.png)
+
 ## Notes on coding style
 For other personal projects, I have been writing lots of c99, so I wanted to write a fun personal project inspired by a procedural style like you would see in older c-api's. Although its hard to ignore c++ features like pasing by reference, the Standard Template Library, and namespaces.
